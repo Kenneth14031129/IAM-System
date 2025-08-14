@@ -143,8 +143,8 @@ const Roles = () => {
         })).unwrap();
       }
       handleCloseGroupModal();
-      fetchRoleGroups(); // Refresh the role-group data
-      fetchRoleGroupDetails(selectedRole.id); // Refresh detailed data
+      fetchRoleGroups();
+      fetchRoleGroupDetails(selectedRole.id);
     } catch (error) {
       console.error('Failed to assign role to groups:', error);
     }
@@ -154,8 +154,8 @@ const Roles = () => {
     if (window.confirm('Are you sure you want to remove this role from the group?')) {
       try {
         await dispatch(removeRoleFromGroup({ groupId, roleId })).unwrap();
-        fetchRoleGroups(); // Refresh the role-group data
-        fetchRoleGroupDetails(roleId); // Refresh detailed data
+        fetchRoleGroups();
+        fetchRoleGroupDetails(roleId);
       } catch (error) {
         console.error('Failed to remove role from group:', error);
       }
@@ -191,7 +191,7 @@ const Roles = () => {
     setSelectedRole(role);
     setSelectedGroups([]);
     setShowGroupModal(true);
-    fetchRoleGroupDetails(role.id); // Fetch current group assignments
+    fetchRoleGroupDetails(role.id);
   };
 
   const handlePermissionToggle = (permissionId) => {
@@ -238,7 +238,6 @@ const Roles = () => {
     setShowModal(true);
   };
 
-  // Group permissions by module for better display
   const groupedPermissions = permissions.reduce((acc, permission) => {
     const module = permission.module_name || 'Unknown';
     if (!acc[module]) {
@@ -248,7 +247,6 @@ const Roles = () => {
     return acc;
   }, {});
 
-  // Get available groups for assignment (not already assigned to this role)
   const getAvailableGroups = (roleId) => {
     const assignedGroups = roleGroupDetails[roleId] || [];
     const assignedGroupIds = assignedGroups.map(g => g.id);
@@ -462,7 +460,7 @@ const Roles = () => {
         </div>
       )}
 
-      {/* Assign Permissions Modal - Keep existing modal */}
+      {/* Assign Permissions Modal */}
       {showPermissionModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
@@ -539,7 +537,7 @@ const Roles = () => {
         </div>
       )}
 
-      {/* Assign to Groups Modal - NEW */}
+      {/* Assign to Groups Modal */}
       {showGroupModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
