@@ -21,7 +21,6 @@ const Users = () => {
     fetchUserGroups();
   }, [dispatch]);
 
-  // Fetch user-group relationships
   const fetchUserGroups = async () => {
   try {
     const token = localStorage.getItem('token');
@@ -31,7 +30,6 @@ const Users = () => {
       }
     });
     
-    // Transform array to object for easier lookup
     const groupsMap = {};
     response.data.forEach(ug => {
       if (!groupsMap[ug.user_id]) {
@@ -73,7 +71,7 @@ const Users = () => {
         await dispatch(usersThunks.create(formData)).unwrap();
       }
       handleCloseModal();
-      fetchUserGroups(); // Refresh user-group data
+      fetchUserGroups();
     } catch (error) {
       console.error('Failed to save user:', error);
     }
@@ -93,7 +91,7 @@ const Users = () => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
         await dispatch(usersThunks.delete(userId)).unwrap();
-        fetchUserGroups(); // Refresh user-group data
+        fetchUserGroups();
       } catch (error) {
         console.error('Failed to delete user:', error);
       }
