@@ -12,7 +12,7 @@ const authAttempts = new Map();
 const rateLimitAuth = (req, res, next) => {
   const ip = req.ip || req.connection.remoteAddress;
   const now = Date.now();
-  const windowMs = 15 * 60 * 1000; // 15 minutes
+  const windowMs = 15 * 60 * 1000;
   const maxAttempts = 5;
 
   if (!authAttempts.has(ip)) {

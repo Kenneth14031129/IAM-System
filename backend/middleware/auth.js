@@ -42,7 +42,7 @@ const checkPermission = (module, action) => {
       const result = db.prepare(query).get(userId, module, action);
       
       if (result.count > 0) {
-        next(); // Permission granted, continue to route handler
+        next();
       } else {
         return res.status(403).json({ 
           error: `Permission denied: ${action} on ${module}` 
