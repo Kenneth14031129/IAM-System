@@ -4,7 +4,6 @@ const { authenticateToken, checkPermission } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Groups CRUD with permission checking
 router.get('/groups', authenticateToken, checkPermission('Groups', 'read'), (req, res) => {
   try {
     const groups = db.prepare('SELECT * FROM groups').all();
@@ -51,7 +50,6 @@ router.delete('/groups/:id', authenticateToken, checkPermission('Groups', 'delet
   }
 });
 
-// Assign user to group (requires Groups update permission)
 router.post('/groups/:groupId/users', authenticateToken, checkPermission('Groups', 'update'), (req, res) => {
   try {
     const { groupId } = req.params;
@@ -88,7 +86,6 @@ router.post('/groups/:groupId/roles', authenticateToken, checkPermission('Groups
   }
 });
 
-// Remove role from group
 router.delete('/groups/:groupId/roles/:roleId', authenticateToken, checkPermission('Groups', 'update'), (req, res) => {
   try {
     const { groupId, roleId } = req.params;
