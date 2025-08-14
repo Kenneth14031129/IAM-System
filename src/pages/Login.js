@@ -61,7 +61,6 @@ const Login = () => {
       [name]: value
     });
 
-    // Clear validation error for this field
     if (validationErrors[name]) {
       setValidationErrors({
         ...validationErrors,
