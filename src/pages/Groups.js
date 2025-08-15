@@ -50,7 +50,6 @@ const Groups = () => {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      // ADD the role fetching code HERE:
       const roleGroupsResponse = await axios.get('/role-groups', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -68,7 +67,6 @@ const Groups = () => {
       });
       setGroupUsers(usersMap);
       
-      // ADD the roles mapping HERE:
       const rolesMap = {};
       roleGroupsResponse.data.forEach(rg => {
         if (!rolesMap[rg.group_id]) {
@@ -321,23 +319,23 @@ const Groups = () => {
               </div>
 
               {/* Assigned Roles */}
-<div className="mb-4">
-  <p className="text-xs font-medium text-gray-700 mb-1">Assigned Roles:</p>
-  <div className="flex flex-wrap gap-1">
-    {groupRoles[group.id] && groupRoles[group.id].length > 0 ? (
-      groupRoles[group.id].map((role, index) => (
-        <span
-          key={index}
-          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
-        >
-          {role.name}
-        </span>
-      ))
-    ) : (
-      <span className="text-xs text-gray-400 italic">No roles assigned</span>
-    )}
-  </div>
-</div>
+              <div className="mb-4">
+                <p className="text-xs font-medium text-gray-700 mb-1">Assigned Roles:</p>
+                <div className="flex flex-wrap gap-1">
+                  {groupRoles[group.id] && groupRoles[group.id].length > 0 ? (
+                    groupRoles[group.id].map((role, index) => (
+                      <span
+                        key={index}
+                        className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                      >
+                        {role.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-gray-400 italic">No roles assigned</span>
+                  )}
+                </div>
+              </div>
 
               <div className="space-y-3">
                 <button
@@ -493,82 +491,82 @@ const Groups = () => {
       )}
 
       {/* Delete Confirmation Modal */}
-    {showDeleteModal && groupToDelete && (
-      <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-          <div className="mt-3">
-            <div className="flex items-center justify-center mb-4">
-              <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
-                <AlertCircle className="h-6 w-6 text-red-600" />
+      {showDeleteModal && groupToDelete && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-center mb-4">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                </div>
               </div>
-            </div>
-            
-            <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Delete Group
-              </h3>
-              <p className="text-sm text-gray-500 mb-6">
-                Are you sure you want to delete group <span className="font-semibold text-gray-700">"{groupToDelete.name}"</span>? 
-                This action cannot be undone and will permanently remove the group and all associated assignments.
-              </p>
-            </div>
+              
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Delete Group
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Are you sure you want to delete group <span className="font-semibold text-gray-700">"{groupToDelete.name}"</span>? 
+                  This action cannot be undone and will permanently remove the group and all associated assignments.
+                </p>
+              </div>
 
-            <div className="flex justify-center space-x-3">
-              <button
-                type="button"
-                onClick={handleCancelDelete}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={loading}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Deleting...
-                  </div>
-                ) : (
-                  'Delete Group'
-                )}
-              </button>
+              <div className="flex justify-center space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCancelDelete}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={loading}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Deleting...
+                    </div>
+                  ) : (
+                    'Delete Group'
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
 
-    {/* Toast Notification */}
-    {toast.show && (
-      <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg transition-all duration-300 ${
-        toast.type === 'success' 
-          ? 'bg-green-50 border border-green-200 text-green-700' 
-          : 'bg-red-50 border border-red-200 text-red-700'
-      }`}>
-        <div className="flex items-center">
-          {toast.type === 'success' ? (
-            <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          ) : (
-            <AlertCircle className="w-5 h-5 mr-3" />
-          )}
-          <span className="text-sm font-medium">{toast.message}</span>
-          <button
-            onClick={() => setToast({ show: false, message: '', type: '' })}
-            className={`ml-4 ${
-              toast.type === 'success' ? 'text-green-400 hover:text-green-600' : 'text-red-400 hover:text-red-600'
-            }`}
-          >
-            <X className="w-4 h-4" />
-          </button>
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg transition-all duration-300 ${
+          toast.type === 'success' 
+            ? 'bg-green-50 border border-green-200 text-green-700' 
+            : 'bg-red-50 border border-red-200 text-red-700'
+        }`}>
+          <div className="flex items-center">
+            {toast.type === 'success' ? (
+              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <AlertCircle className="w-5 h-5 mr-3" />
+            )}
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button
+              onClick={() => setToast({ show: false, message: '', type: '' })}
+              className={`ml-4 ${
+                toast.type === 'success' ? 'text-green-400 hover:text-green-600' : 'text-red-400 hover:text-red-600'
+              }`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
-      </div>
-    )}
+      )}
     </div>
   );
 };
