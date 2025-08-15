@@ -1,24 +1,88 @@
-import logo from './logo.svg';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { store } from './store/store';
+import { useSelector } from 'react-redux';
 
+// Components
+import Navbar from './components/Navbar';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import Users from './pages/Users';
+import Groups from './pages/Groups';
+import Roles from './pages/Roles';
+import Modules from './pages/Modules';
+import Permissions from './pages/Permissions';
+
+// Protected Route wrapper
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated } = useSelector(state => state.auth);
+  return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// Main App Layout
+const AppLayout = ({ children }) => {
+  const { isAuthenticated } = useSelector(state => state.auth);
+  
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {isAuthenticated && <Navbar />}
+      <main className={isAuthenticated ? "ml-64 p-8" : ""}>
+        {children}
+      </main>
+    </div>
+  );
+};
+
+// App Routes Component
+const AppRoutes = () => {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <Dashboard />
+        </ProtectedRoute>
+      } />
+      <Route path="/users" element={
+        <ProtectedRoute>
+          <Users />
+        </ProtectedRoute>
+      } />
+      <Route path="/groups" element={
+        <ProtectedRoute>
+          <Groups />
+        </ProtectedRoute>
+      } />
+      <Route path="/roles" element={
+        <ProtectedRoute>
+          <Roles />
+        </ProtectedRoute>
+      } />
+      <Route path="/modules" element={
+        <ProtectedRoute>
+          <Modules />
+        </ProtectedRoute>
+      } />
+      <Route path="/permissions" element={
+        <ProtectedRoute>
+          <Permissions />
+        </ProtectedRoute>
+      } />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
+};
+
+// Main App Component
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Provider store={store}>
+      <Router>
+        <AppLayout>
+          <AppRoutes />
+        </AppLayout>
+      </Router>
+    </Provider>
   );
 }
 
