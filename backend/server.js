@@ -40,12 +40,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// 404 handler - FIXED: Use a proper route pattern instead of '*'
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Initialize database and start server
 try {
   console.log('Initializing database...');
   initDatabase();
