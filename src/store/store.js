@@ -323,6 +323,18 @@ export const removeRoleFromGroup = createAsyncThunk(
   }
 );
 
+export const removeUserFromGroup = createAsyncThunk(
+  'relationships/removeUserFromGroup',
+  async ({ groupId, userId }, { rejectWithValue }) => {
+    try {
+      const response = await axios.delete(`/groups/${groupId}/users/${userId}`);
+      return { groupId, userId, message: response.data.message };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to remove user from group');
+    }
+  }
+);
+
 // Export actions
 export const { logout, clearError } = authSlice.actions;
 export const clearUsersError = usersSlice.actions.clearError;

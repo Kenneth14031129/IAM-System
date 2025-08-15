@@ -512,12 +512,16 @@ const Roles = () => {
 
               <form onSubmit={handleGroupAssignment} className="space-y-4">
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-2 sm:mb-3">Available Groups:</h4>
-                  <div className="max-h-48 sm:max-h-64 overflow-y-auto space-y-2">
-                    {selectedRole && getAvailableGroups(selectedRole.id).length === 0 ? (
-                      <p className="text-gray-500 text-sm p-3 text-center">No additional groups available</p>
-                    ) : (
-                      selectedRole && getAvailableGroups(selectedRole.id).map((group) => (
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Available Groups
+                  </label>
+                  {selectedRole && getAvailableGroups(selectedRole.id).length === 0 ? (
+                    <div className="block w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-50 text-gray-500 text-left">
+                      No groups available
+                    </div>
+                  ) : (
+                    <div className="max-h-48 sm:max-h-64 overflow-y-auto space-y-2 border border-gray-300 rounded-md p-2">
+                      {selectedRole && getAvailableGroups(selectedRole.id).map((group) => (
                         <label
                           key={group.id}
                           className="flex items-center p-3 border border-gray-200 rounded cursor-pointer hover:bg-gray-50 transition-colors"
@@ -536,9 +540,9 @@ const Roles = () => {
                             )}
                           </div>
                         </label>
-                      ))
-                    )}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 border-t space-y-3 sm:space-y-0">

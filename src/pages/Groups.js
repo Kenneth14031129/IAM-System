@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { groupsThunks, usersThunks, assignUserToGroup, clearGroupsError } from '../store/store';
+import { groupsThunks, usersThunks, assignUserToGroup, clearGroupsError, removeUserFromGroup, } from '../store/store';
 import { 
   Plus, 
   AlertCircle, 
@@ -36,7 +36,9 @@ const Groups = () => {
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState(null);
-
+  const [groupAssignedUsers, setGroupAssignedUsers] = useState([]);
+  const [showRemoveUserModal, setShowRemoveUserModal] = useState(false);
+  const [userToRemove, setUserToRemove] = useState(null);
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: '' }), 4000);
@@ -142,9 +144,20 @@ const Groups = () => {
           userId: parseInt(assignFormData.userId)
         })).unwrap();
         showToast('User assigned to group successfully!', 'success');
+        
+        const assignedUser = users.find(u => u.id === parseInt(assignFormData.userId));
+        if (assignedUser) {
+          setGroupAssignedUsers(prev => [...prev, {
+            id: assignedUser.id,
+            username: assignedUser.username,
+            email: assignedUser.email
+          }]);
+        }
+        
+        setAssignFormData({ userId: '', roleId: '' });
+        
+        fetchGroupAssignments();
       }
-      handleCloseAssignModal();
-      fetchGroupAssignments();
     } catch (error) {
       console.error('Failed to assign:', error);
       showToast(error.message || `Failed to assign ${assignType}`, 'error');
@@ -187,7 +200,41 @@ const Groups = () => {
     setSelectedGroup(group);
     setAssignType('user');
     setAssignFormData({ userId: '', roleId: '' });
+    
+    const assignedUsers = groupUsers[group.id] || [];
+    setGroupAssignedUsers(assignedUsers);
+    
     setShowAssignModal(true);
+  };
+
+  const handleShowRemoveUserModal = (user) => {
+    setUserToRemove(user);
+    setShowRemoveUserModal(true);
+  };
+
+  const handleConfirmRemoveUser = async () => {
+    try {
+      await dispatch(removeUserFromGroup({ 
+        groupId: selectedGroup.id, 
+        userId: userToRemove.id 
+      })).unwrap();
+      showToast('User removed from group successfully!', 'success');
+      
+      setGroupAssignedUsers(prev => prev.filter(user => user.id !== userToRemove.id));
+      
+      fetchGroupAssignments();
+    } catch (error) {
+      console.error('Failed to remove user from group:', error);
+      showToast(error.message || 'Failed to remove user from group', 'error');
+    } finally {
+      setShowRemoveUserModal(false);
+      setUserToRemove(null);
+    }
+  };
+
+  const handleCancelRemoveUser = () => {
+    setShowRemoveUserModal(false);
+    setUserToRemove(null);
   };
 
   const handleCloseModal = () => {
@@ -201,6 +248,9 @@ const Groups = () => {
     setSelectedGroup(null);
     setAssignType('');
     setAssignFormData({ userId: '', roleId: '' });
+    setGroupAssignedUsers([]);
+    setShowRemoveUserModal(false); 
+    setUserToRemove(null);         
   };
 
   const handleAddNew = () => {
@@ -446,14 +496,14 @@ const Groups = () => {
         </div>
       )}
 
-      {/* Assign User/Role Modal */}
+      {/* Assign User Modal */}
       {showAssignModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
-          <div className="relative top-4 sm:top-20 mx-auto border shadow-lg rounded-md bg-white max-w-md w-full">
+          <div className="relative top-4 sm:top-10 mx-auto border shadow-lg rounded-md bg-white max-w-2xl w-full">
             <div className="p-4 sm:p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-gray-900">
-                  Assign {assignType === 'user' ? 'User' : 'Role'} to {selectedGroup?.name}
+                  Manage Users for {selectedGroup?.name}
                 </h3>
                 <button
                   onClick={handleCloseAssignModal}
@@ -463,41 +513,79 @@ const Groups = () => {
                 </button>
               </div>
 
+              {/* Currently Assigned Users */}
+              {groupAssignedUsers.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Currently Assigned Users:</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {groupAssignedUsers.map((user) => (
+                      <div
+                        key={user.id}
+                        className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
+                      >
+                        <span>{user.username}</span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleShowRemoveUserModal(user);
+                          }}
+                          className="ml-2 text-blue-600 hover:text-blue-800"
+                          title="Remove from group"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Assign New User Form */}
               <form onSubmit={handleAssignSubmit} className="space-y-4">
                 <div>
                   <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-1">
-                    Select User
+                    Assign New User
                   </label>
-                  <select
-                    id="userId"
-                    name="userId"
-                    value={assignFormData.userId}
-                    onChange={handleAssignInputChange}
-                    required
-                    className="block w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Choose a user</option>
-                    {users.map((user) => (
-                      <option key={user.id} value={user.id}>
-                        {user.username} ({user.email})
-                      </option>
-                    ))}
-                  </select>
+                  {users.filter(user => !groupAssignedUsers.some(assignedUser => assignedUser.id === user.id)).length === 0 ? (
+                    <div className="block w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md bg-gray-50 text-gray-500">
+                      No available users to assign
+                    </div>
+                  ) : (
+                    <select
+                      id="userId"
+                      name="userId"
+                      value={assignFormData.userId}
+                      onChange={handleAssignInputChange}
+                      className="block w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Choose a user to assign</option>
+                      {users
+                        .filter(user => !groupAssignedUsers.some(assignedUser => assignedUser.id === user.id))
+                        .map((user) => (
+                          <option key={user.id} value={user.id}>
+                            {user.username} ({user.email})
+                          </option>
+                        ))}
+                    </select>
+                  )}
                 </div>
 
-                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-6">
+                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 pt-4 border-t">
                   <button
                     type="button"
                     onClick={handleCloseAssignModal}
                     className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 w-full sm:w-auto"
                   >
-                    Cancel
+                    Close
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 w-full sm:w-auto"
+                    disabled={!assignFormData.userId}
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                   >
-                    Assign {assignType === 'user' ? 'User' : 'Role'}
+                    Assign User
                   </button>
                 </div>
               </form>
@@ -580,6 +668,48 @@ const Groups = () => {
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Remove User Confirmation Modal */}
+      {showRemoveUserModal && userToRemove && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
+          <div className="relative top-4 sm:top-20 mx-auto border shadow-lg rounded-md bg-white max-w-md w-full">
+            <div className="p-4 sm:p-5">
+              <div className="flex items-center justify-center mb-4">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-orange-100">
+                  <AlertCircle className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Remove User from Group
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Are you sure you want to remove <span className="font-semibold text-gray-700">"{userToRemove.username}"</span> from group <span className="font-semibold text-gray-700">"{selectedGroup?.name}"</span>? 
+                  This will revoke their group membership and associated permissions.
+                </p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCancelRemoveUser}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmRemoveUser}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 w-full sm:w-auto"
+                >
+                  Remove User
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
