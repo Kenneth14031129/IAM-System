@@ -17,7 +17,7 @@ import {
 const Navbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { user } = useSelector(state => state.auth);
+  const { user, permissions } = useSelector(state => state.auth);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -26,38 +26,52 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
   };
 
+  const hasPermission = (module, action) => {
+    return permissions.some(permission => 
+      permission.module_name === module && permission.action === action
+    );
+  };
+
   const navItems = [
     {
       path: '/dashboard',
       name: 'Dashboard',
-      icon: <LayoutDashboard className="w-5 h-5" />
+      icon: <LayoutDashboard className="w-5 h-5" />,
+      show: true
     },
     {
       path: '/users',
       name: 'Users',
-      icon: <Users className="w-5 h-5" />
+      icon: <Users className="w-5 h-5" />,
+      show: hasPermission('Users', 'read')
     },
     {
       path: '/groups',
       name: 'Groups',
-      icon: <UsersRound className="w-5 h-5" />
+      icon: <UsersRound className="w-5 h-5" />,
+      show: hasPermission('Groups', 'read')
     },
     {
       path: '/roles',
       name: 'Roles',
-      icon: <Shield className="w-5 h-5" />
+      icon: <Shield className="w-5 h-5" />,
+      show: hasPermission('Roles', 'read')
     },
     {
       path: '/modules',
       name: 'Modules',
-      icon: <Grid3X3 className="w-5 h-5" />
+      icon: <Grid3X3 className="w-5 h-5" />,
+      show: hasPermission('Modules', 'read')
     },
     {
       path: '/permissions',
       name: 'Permissions',
-      icon: <Key className="w-5 h-5" />
+      icon: <Key className="w-5 h-5" />,
+      show: hasPermission('Permissions', 'read')
     }
   ];
+
+  const visibleNavItems = navItems.filter(item => item.show);
 
   const handleNavClick = () => {
     setIsMobileMenuOpen(false);
@@ -116,7 +130,7 @@ const Navbar = () => {
 
               {/* Navigation */}
               <nav className="flex-1 px-4 py-6 space-y-2">
-                {navItems.map((item) => (
+                {visibleNavItems.map((item) => (
                   <NavLink
                     key={item.path}
                     to={item.path}
@@ -175,7 +189,7 @@ const Navbar = () => {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-6 space-y-2">
-            {navItems.map((item) => (
+            {visibleNavItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
