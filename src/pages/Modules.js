@@ -9,10 +9,6 @@ import {
   Grid3X3, 
   Edit, 
   Trash2,
-  Users,
-  UsersRound,
-  Shield,
-  Key,
   Package
 } from 'lucide-react';
 
@@ -25,6 +21,14 @@ const Modules = () => {
     name: '',
     description: ''
   });
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [moduleToDelete, setModuleToDelete] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: '' }), 4000);
+  };
 
   useEffect(() => {
     dispatch(modulesThunks.fetchAll());
@@ -54,12 +58,15 @@ const Modules = () => {
           id: editingModule.id, 
           data: formData 
         })).unwrap();
+        showToast('Module updated successfully!', 'success');
       } else {
         await dispatch(modulesThunks.create(formData)).unwrap();
+        showToast('Module created successfully!', 'success');
       }
       handleCloseModal();
     } catch (error) {
       console.error('Failed to save module:', error);
+      showToast(error.message || 'Failed to save module', 'error');
     }
   };
 
@@ -72,14 +79,28 @@ const Modules = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (moduleId) => {
-    if (window.confirm('Are you sure you want to delete this module? This will also delete all related permissions.')) {
-      try {
-        await dispatch(modulesThunks.delete(moduleId)).unwrap();
-      } catch (error) {
-        console.error('Failed to delete module:', error);
-      }
+  const handleDelete = async () => {
+    try {
+      await dispatch(modulesThunks.delete(moduleToDelete.id)).unwrap();
+      showToast('Module deleted successfully!', 'success');
+      setShowDeleteModal(false);
+      setModuleToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete module:', error);
+      showToast(error.message || 'Failed to delete module', 'error');
+      setShowDeleteModal(false);
+      setModuleToDelete(null);
     }
+  };
+
+  const handleShowDeleteModal = (module) => {
+    setModuleToDelete(module);
+    setShowDeleteModal(true);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setModuleToDelete(null);
   };
 
   const handleCloseModal = () => {
@@ -93,22 +114,7 @@ const Modules = () => {
     setFormData({ name: '', description: '' });
     setShowModal(true);
   };
-
-  const getModuleIcon = (moduleName) => {
-  const name = moduleName?.toLowerCase();
-  if (name?.includes('user')) {
-    return <Users className="w-6 h-6 text-blue-600" />;
-  } else if (name?.includes('group')) {
-    return <UsersRound className="w-6 h-6 text-green-600" />;
-  } else if (name?.includes('role')) {
-    return <Shield className="w-6 h-6 text-purple-600" />;
-  } else if (name?.includes('permission')) {
-    return <Key className="w-6 h-6 text-orange-600" />;
-  } else {
-    return <Grid3X3 className="w-6 h-6 text-gray-600" />;
-  }
-};
-
+  
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -174,7 +180,7 @@ const Modules = () => {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center">
                   <div className="w-12 h-12 bg-gray-50 rounded-lg flex items-center justify-center">
-                    {getModuleIcon(module.name)}
+                    <Grid3X3 className='w-6 h-6' />
                   </div>
                   <div className="ml-3">
                     <h3 className="text-lg font-semibold text-gray-900">{module.name}</h3>
@@ -189,7 +195,7 @@ const Modules = () => {
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDelete(module.id)}
+                    onClick={() => handleShowDeleteModal(module)}
                     className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -292,6 +298,84 @@ const Modules = () => {
                 </div>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && moduleToDelete && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-center mb-4">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Delete Module
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Are you sure you want to delete module <span className="font-semibold text-gray-700">"{moduleToDelete.name}"</span>? 
+                  This action cannot be undone and will permanently remove the module and all associated permissions.
+                </p>
+              </div>
+
+              <div className="flex justify-center space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCancelDelete}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={loading}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Deleting...
+                    </div>
+                  ) : (
+                    'Delete Module'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg transition-all duration-300 ${
+          toast.type === 'success' 
+            ? 'bg-green-50 border border-green-200 text-green-700' 
+            : 'bg-red-50 border border-red-200 text-red-700'
+        }`}>
+          <div className="flex items-center">
+            {toast.type === 'success' ? (
+              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <AlertCircle className="w-5 h-5 mr-3" />
+            )}
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button
+              onClick={() => setToast({ show: false, message: '', type: '' })}
+              className={`ml-4 ${
+                toast.type === 'success' ? 'text-green-400 hover:text-green-600' : 'text-red-400 hover:text-red-600'
+              }`}
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}
