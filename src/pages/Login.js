@@ -6,9 +6,9 @@ import { loginUser, registerUser, clearError } from '../store/store';
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
-    username: 'admin',
+    username: '',
     email: '',
-    password: 'admin123'
+    password: ''
   });
   const [validationErrors, setValidationErrors] = useState({});
 
