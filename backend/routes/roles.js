@@ -14,6 +14,26 @@ router.get('/roles', authenticateToken, checkPermission('Roles', 'read'), (req, 
   }
 });
 
+router.get('/role-groups', authenticateToken, checkPermission('Roles', 'read'), (req, res) => {
+  try {
+    const roleGroups = db.prepare(`
+      SELECT 
+        gr.role_id, 
+        gr.group_id, 
+        r.name as role_name, 
+        g.name as group_name
+      FROM group_roles gr
+      JOIN roles r ON gr.role_id = r.id
+      JOIN groups g ON gr.group_id = g.id
+      ORDER BY r.name, g.name
+    `).all();
+    res.json(roleGroups);
+  } catch (error) {
+    console.error('Error fetching role-groups:', error);
+    res.status(500).json({ error: 'Failed to fetch role-groups' });
+  }
+});
+
 router.post('/roles', authenticateToken, checkPermission('Roles', 'create'), (req, res) => {
   try {
     const { name, description } = req.body;
@@ -51,7 +71,6 @@ router.delete('/roles/:id', authenticateToken, checkPermission('Roles', 'delete'
   }
 });
 
-// Get which groups each role is assigned to (detailed view)
 router.get('/roles/:roleId/groups', authenticateToken, checkPermission('Roles', 'read'), (req, res) => {
   try {
     const { roleId } = req.params;
@@ -68,7 +87,6 @@ router.get('/roles/:roleId/groups', authenticateToken, checkPermission('Roles', 
   }
 });
 
-// Assign permission to role (requires Roles update permission)
 router.post('/roles/:roleId/permissions', authenticateToken, checkPermission('Roles', 'update'), (req, res) => {
   try {
     const { roleId } = req.params;
@@ -87,7 +105,6 @@ router.post('/roles/:roleId/permissions', authenticateToken, checkPermission('Ro
   }
 });
 
-// Get permissions assigned to a role
 router.get('/roles/:roleId/permissions', authenticateToken, checkPermission('Roles', 'read'), (req, res) => {
   try {
     const { roleId } = req.params;
@@ -105,7 +122,6 @@ router.get('/roles/:roleId/permissions', authenticateToken, checkPermission('Rol
   }
 });
 
-// Remove permission from role
 router.delete('/roles/:roleId/permissions/:permissionId', authenticateToken, checkPermission('Roles', 'update'), (req, res) => {
   try {
     const { roleId, permissionId } = req.params;

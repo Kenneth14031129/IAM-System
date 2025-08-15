@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { 
-  rolesThunks, 
-  permissionsThunks, 
+  rolesThunks,
   groupsThunks,
-  assignPermissionToRole, 
   assignRoleToGroup,
   getRoleGroups,
   removeRoleFromGroup,
@@ -19,7 +17,6 @@ import {
   ShieldX, 
   Edit, 
   Trash2,
-  Key,
   Users,
 } from 'lucide-react';
 
@@ -27,11 +24,9 @@ import {
 const Roles = () => {
   const dispatch = useDispatch();
   const { items: roles, loading, error } = useSelector(state => state.roles);
-  const { items: permissions } = useSelector(state => state.permissions);
   const { items: groups } = useSelector(state => state.groups);
   const [roleGroups, setRoleGroups] = useState({});
   const [showModal, setShowModal] = useState(false);
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [showGroupModal, setShowGroupModal] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
   const [editingRole, setEditingRole] = useState(null);
@@ -39,7 +34,6 @@ const Roles = () => {
     name: '',
     description: ''
   });
-  const [selectedPermissions, setSelectedPermissions] = useState([]);
   const [selectedGroups, setSelectedGroups] = useState([]);
   const [roleGroupDetails, setRoleGroupDetails] = useState({});
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
@@ -88,7 +82,6 @@ const Roles = () => {
 
   useEffect(() => {
     dispatch(rolesThunks.fetchAll());
-    dispatch(permissionsThunks.fetchAll());
     dispatch(groupsThunks.fetchAll());
     fetchRoleGroups();
   }, [dispatch]);
@@ -126,23 +119,6 @@ const Roles = () => {
     } catch (error) {
       console.error('Failed to save role:', error);
       showToast(error.message || 'Failed to save role', 'error');
-    }
-  };
-
-  const handlePermissionAssignment = async (e) => {
-    e.preventDefault();
-    try {
-      for (const permissionId of selectedPermissions) {
-        await dispatch(assignPermissionToRole({
-          roleId: selectedRole.id,
-          permissionId: parseInt(permissionId)
-        })).unwrap();
-      }
-      showToast(`${selectedPermissions.length} permission(s) assigned successfully!`, 'success');
-      handleClosePermissionModal();
-    } catch (error) {
-      console.error('Failed to assign permissions:', error);
-      showToast(error.message || 'Failed to assign permissions', 'error');
     }
   };
 
@@ -212,27 +188,11 @@ const Roles = () => {
     setRoleToDelete(null);
   };
 
-  const handleAssignPermissions = (role) => {
-    setSelectedRole(role);
-    setSelectedPermissions([]);
-    setShowPermissionModal(true);
-  };
-
   const handleAssignToGroups = (role) => {
     setSelectedRole(role);
     setSelectedGroups([]);
     setShowGroupModal(true);
     fetchRoleGroupDetails(role.id);
-  };
-
-  const handlePermissionToggle = (permissionId) => {
-    setSelectedPermissions(prev => {
-      if (prev.includes(permissionId)) {
-        return prev.filter(id => id !== permissionId);
-      } else {
-        return [...prev, permissionId];
-      }
-    });
   };
 
   const handleGroupToggle = (groupId) => {
@@ -251,12 +211,6 @@ const Roles = () => {
     setFormData({ name: '', description: '' });
   };
 
-  const handleClosePermissionModal = () => {
-    setShowPermissionModal(false);
-    setSelectedRole(null);
-    setSelectedPermissions([]);
-  };
-
   const handleCloseGroupModal = () => {
     setShowGroupModal(false);
     setSelectedRole(null);
@@ -268,15 +222,6 @@ const Roles = () => {
     setFormData({ name: '', description: '' });
     setShowModal(true);
   };
-
-  const groupedPermissions = permissions.reduce((acc, permission) => {
-    const module = permission.module_name || 'Unknown';
-    if (!acc[module]) {
-      acc[module] = [];
-    }
-    acc[module].push(permission);
-    return acc;
-  }, {});
 
   const getAvailableGroups = (roleId) => {
     const assignedGroups = roleGroupDetails[roleId] || [];
@@ -394,14 +339,6 @@ const Roles = () => {
 
               <div className="space-y-3">
                 <button
-                  onClick={() => handleAssignPermissions(role)}
-                  className="w-full flex items-center justify-center px-3 py-2 border border-purple-300 text-purple-700 rounded-md hover:bg-purple-50 transition duration-200"
-                >
-                  <Key className="w-4 h-4 mr-2" />
-                  Assign Permissions
-                </button>
-                
-                <button
                   onClick={() => handleAssignToGroups(role)}
                   className="w-full flex items-center justify-center px-3 py-2 border border-green-300 text-green-700 rounded-md hover:bg-green-50 transition duration-200"
                 >
@@ -484,83 +421,6 @@ const Roles = () => {
                   >
                     {editingRole ? 'Update Role' : 'Create Role'}
                   </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Assign Permissions Modal */}
-      {showPermissionModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-10 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-medium text-gray-900">
-                  Assign Permissions to {selectedRole?.name}
-                </h3>
-                <button
-                  onClick={handleClosePermissionModal}
-                  className="text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
-
-              <form onSubmit={handlePermissionAssignment} className="space-y-4">
-                <div className="max-h-96 overflow-y-auto">
-                  {Object.entries(groupedPermissions).map(([module, modulePermissions]) => (
-                    <div key={module} className="mb-6">
-                      <h4 className="text-md font-semibold text-gray-800 mb-3"> 
-                        {module}
-                      </h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {modulePermissions.map((permission) => (
-                          <label
-                            key={permission.id}
-                            className="flex items-center p-2 border border-gray-200 rounded cursor-pointer hover:bg-gray-50"
-                          >
-                            <input
-                              type="checkbox"
-                              value={permission.id}
-                              checked={selectedPermissions.includes(permission.id.toString())}
-                              onChange={() => handlePermissionToggle(permission.id.toString())}
-                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                            />
-                            <div className="ml-3">
-                              <span className="text-sm font-medium text-gray-900">
-                                {permission.action}
-                              </span>
-                              <p className="text-xs text-gray-500">{permission.description}</p>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex justify-between items-center pt-4 border-t">
-                  <p className="text-sm text-gray-600">
-                    {selectedPermissions.length} permission(s) selected
-                  </p>
-                  <div className="flex space-x-3">
-                    <button
-                      type="button"
-                      onClick={handleClosePermissionModal}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={selectedPermissions.length === 0}
-                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Assign Permissions
-                    </button>
-                  </div>
                 </div>
               </form>
             </div>
