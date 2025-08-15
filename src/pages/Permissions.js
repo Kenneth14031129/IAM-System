@@ -276,32 +276,32 @@ const Permissions = () => {
   const getActionIcon = (action) => {
     switch (action) {
       case 'create':
-        return <PlusCircle className="w-4 h-4" />;
+        return <PlusCircle className="w-3 h-3 sm:w-4 sm:h-4" />;
       case 'read':
-        return <Eye className="w-4 h-4" />;
+        return <Eye className="w-3 h-3 sm:w-4 sm:h-4" />;
       case 'update':
-        return <Edit3 className="w-4 h-4" />;
+        return <Edit3 className="w-3 h-3 sm:w-4 sm:h-4" />;
       case 'delete':
-        return <Trash className="w-4 h-4" />;
+        return <Trash className="w-3 h-3 sm:w-4 sm:h-4" />;
       default:
-        return <Key className="w-4 h-4" />;
+        return <Key className="w-3 h-3 sm:w-4 sm:h-4" />;
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Permissions</h1>
-          <p className="text-gray-600 mt-2">Manage system permissions and assign them to roles.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Permissions</h1>
+          <p className="text-gray-600 mt-1 sm:mt-2 text-sm sm:text-base">Manage system permissions and assign them to roles.</p>
         </div>
         <button
           onClick={handleAddNew}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200"
+          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-200 text-sm sm:text-base w-full sm:w-auto"
         >
-          <div className="flex items-center">
-            <Plus className="w-5 h-5 mr-2" />
+          <div className="flex items-center justify-center">
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
             Add Permission
           </div>
         </button>
@@ -309,15 +309,15 @@ const Permissions = () => {
 
       {/* Error Alert */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+        <div className="bg-red-50 border border-red-200 rounded-md p-3 sm:p-4">
           <div className="flex">
-            <AlertCircle className="w-5 h-5 mr-2" />
-            <div className="ml-3">
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+            <div className="ml-3 flex-1">
               <p className="text-red-700 text-sm">{error}</p>
             </div>
             <button
               onClick={() => dispatch(clearPermissionsError())}
-              className="ml-auto text-red-400 hover:text-red-600"
+              className="ml-3 text-red-400 hover:text-red-600 flex-shrink-0"
             >
               <X className="w-4 h-4" />
             </button>
@@ -327,7 +327,7 @@ const Permissions = () => {
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div>
             <label htmlFor="filterModule" className="block text-sm font-medium text-gray-700 mb-1">
               Filter by Module
@@ -336,7 +336,7 @@ const Permissions = () => {
               id="filterModule"
               value={filterModule}
               onChange={(e) => setFilterModule(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="block w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Modules</option>
               {modules.map((module) => (
@@ -355,7 +355,7 @@ const Permissions = () => {
               id="filterAction"
               value={filterAction}
               onChange={(e) => setFilterAction(e.target.value)}
-              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              className="block w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">All Actions</option>
               {actions.map((action) => (
@@ -366,7 +366,7 @@ const Permissions = () => {
             </select>
           </div>
 
-          <div className="flex items-end">
+          <div className="flex items-end sm:col-span-2 lg:col-span-1">
             <button
               onClick={() => {
                 setFilterModule('');
@@ -381,15 +381,15 @@ const Permissions = () => {
       </div>
 
       {/* Permissions by Module */}
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {loading ? (
-          <div className="flex justify-center items-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            <span className="ml-2 text-gray-600">Loading permissions...</span>
+          <div className="flex justify-center items-center py-8 sm:py-12">
+            <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-blue-600" />
+            <span className="ml-2 text-gray-600 text-sm sm:text-base">Loading permissions...</span>
           </div>
         ) : Object.keys(groupedPermissions).length === 0 ? (
-          <div className="text-center py-12">
-            <KeyRound className="mx-auto h-12 w-12 text-gray-400" />
+          <div className="text-center py-8 sm:py-12 px-4">
+            <KeyRound className="mx-auto h-10 w-10 sm:h-12 sm:w-12 text-gray-400" />
             <h3 className="mt-2 text-sm font-medium text-gray-900">No permissions found</h3>
             <p className="mt-1 text-sm text-gray-500">
               {filterModule || filterAction ? 'Try adjusting your filters or create a new permission.' : 'Get started by creating a new permission.'}
@@ -399,7 +399,7 @@ const Permissions = () => {
                 onClick={handleAddNew}
                 className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
               >
-                <Plus className="w-5 h-5 mr-2" />
+                <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 New Permission
               </button>
             </div>
@@ -407,49 +407,51 @@ const Permissions = () => {
         ) : (
           Object.entries(groupedPermissions).map(([moduleName, modulePermissions]) => (
             <div key={moduleName} className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900">{moduleName}</h3>
+              <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">{moduleName}</h3>
                 <p className="text-sm text-gray-500">{modulePermissions.length} permission(s)</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4 p-4 sm:p-6">
                 {modulePermissions.map((permission) => (
-                  <div key={permission.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow duration-200">
-                    <div className="flex items-center justify-between mb-3">
+                  <div key={permission.id} className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-sm transition-shadow duration-200 flex flex-col">
+                    <div className="flex items-start justify-between mb-2 sm:mb-3">
                       <div className="flex items-center">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getActionColor(permission.action)}`}>
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getActionColor(permission.action)}`}>
                           {getActionIcon(permission.action)}
                           <span className="ml-1">{permission.action}</span>
                         </span>
                       </div>
-                      <div className="flex space-x-1">
+                      <div className="flex space-x-1 ml-2">
                         <button
                           onClick={() => handleEdit(permission)}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
+                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors"
+                          title="Edit permission"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
                         </button>
                         <button
                           onClick={() => handleShowDeleteModal(permission)}
-                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
+                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors"
+                          title="Delete permission"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
                         </button>
                       </div>
                     </div>
 
-                    <h4 className="font-medium text-gray-900 mb-2">{permission.name}</h4>
-                    <p className="text-sm text-gray-600 mb-3">{permission.description || 'No description'}</p>
+                    <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base truncate">{permission.name}</h4>
+                    <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4 flex-grow line-clamp-2">{permission.description || 'No description'}</p>
 
                     <button
                       onClick={() => handleAssignToRoles(permission)}
-                      className="w-full flex items-center justify-center px-3 py-2 border border-orange-300 text-orange-700 rounded-md hover:bg-orange-50 transition duration-200 text-sm"
+                      className="w-full flex items-center justify-center px-3 py-2 border border-orange-300 text-orange-700 rounded-md hover:bg-orange-50 transition duration-200 text-xs sm:text-sm"
                     >
-                      <Shield className="w-4 h-4 mr-2" />
+                      <Shield className="w-3 h-3 sm:w-4 sm:h-4 mr-2" />
                       Assign to Roles
                     </button>
 
-                    <div className="mt-3 pt-3 border-t border-gray-200">
+                    <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-200">
                       <p className="text-xs text-gray-500">ID: {permission.id}</p>
                     </div>
                   </div>
@@ -462,24 +464,24 @@ const Permissions = () => {
 
       {/* Add/Edit Permission Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
+          <div className="relative top-4 sm:top-20 mx-auto border shadow-lg rounded-md bg-white max-w-md w-full">
+            <div className="p-4 sm:p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-gray-900">
                   {editingPermission ? 'Edit Permission' : 'Add New Permission'}
                 </h3>
                 <button
                   onClick={handleCloseModal}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 p-1"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                     Permission Name
                   </label>
                   <input
@@ -489,13 +491,13 @@ const Permissions = () => {
                     value={formData.name}
                     onChange={handleInputChange}
                     required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="block w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="e.g., create_users"
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="action" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="action" className="block text-sm font-medium text-gray-700 mb-1">
                     Action
                   </label>
                   <select
@@ -504,7 +506,7 @@ const Permissions = () => {
                     value={formData.action}
                     onChange={handleInputChange}
                     required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="block w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select an action</option>
                     {actions.map((action) => (
@@ -516,7 +518,7 @@ const Permissions = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="module_id" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="module_id" className="block text-sm font-medium text-gray-700 mb-1">
                     Module
                   </label>
                   <select
@@ -525,7 +527,7 @@ const Permissions = () => {
                     value={formData.module_id}
                     onChange={handleInputChange}
                     required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="block w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   >
                     <option value="">Select a module</option>
                     {modules.map((module) => (
@@ -537,7 +539,7 @@ const Permissions = () => {
                 </div>
 
                 <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
                     Description
                   </label>
                   <textarea
@@ -546,23 +548,23 @@ const Permissions = () => {
                     value={formData.description}
                     onChange={handleInputChange}
                     rows={3}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    className="block w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="Describe what this permission allows"
                   />
                 </div>
 
-                <div className="flex justify-end space-x-3 mt-6">
+                <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3 mt-6">
                   <button
                     type="button"
                     onClick={handleCloseModal}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 w-full sm:w-auto"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+                    className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 w-full sm:w-auto"
                   >
                     {editingPermission ? 'Update Permission' : 'Create Permission'}
                   </button>
@@ -575,20 +577,18 @@ const Permissions = () => {
 
       {/* Assign to Roles Modal */}
       {showAssignModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
+          <div className="relative top-4 sm:top-10 mx-auto border shadow-lg rounded-md bg-white w-full max-w-2xl">
+            <div className="p-4 sm:p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-medium text-gray-900">
                   Assign "{selectedPermission?.name}" to Roles
                 </h3>
                 <button
                   onClick={handleCloseAssignModal}
-                  className="text-gray-400 hover:text-gray-600"
+                  className="text-gray-400 hover:text-gray-600 p-1"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
 
@@ -604,7 +604,7 @@ const Permissions = () => {
                             key={roleId}
                             className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
                           >
-                            <span>{role.name}</span>
+                            <span className="truncate max-w-20 sm:max-w-none">{role.name}</span>
                             <button
                               type="button"
                               onClick={(e) => { 
@@ -612,7 +612,7 @@ const Permissions = () => {
                                 e.stopPropagation();
                                 handleShowRemoveModal(roleId, selectedPermission.id);
                               }}
-                              className="ml-2 text-green-600 hover:text-green-800"
+                              className="ml-2 text-green-600 hover:text-green-800 flex-shrink-0"
                               title="Remove permission from role"
                             >
                               <X className="w-3 h-3" />
@@ -624,26 +624,26 @@ const Permissions = () => {
                   </div>
                 )}
 
-                <div className="max-h-64 overflow-y-auto space-y-2">
+                <div className="max-h-48 sm:max-h-64 overflow-y-auto space-y-2">
                   {selectedPermission && getAvailableRoles(selectedPermission.id).length === 0 ? (
-                    <p className="text-gray-500 text-sm">No additional roles available - all roles already have this permission</p>
+                    <p className="text-gray-500 text-sm p-3 text-center">No additional roles available - all roles already have this permission</p>
                   ) : (
                     selectedPermission && getAvailableRoles(selectedPermission.id).map((role) => (
                       <label
                         key={role.id}
-                        className="flex items-center p-3 border border-gray-200 rounded cursor-pointer hover:bg-gray-50"
+                        className="flex items-center p-3 border border-gray-200 rounded cursor-pointer hover:bg-gray-50 transition-colors"
                       >
                         <input
                           type="checkbox"
                           value={role.id}
                           checked={selectedRoles.includes(role.id.toString())}
                           onChange={() => handleRoleToggle(role.id.toString())}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded flex-shrink-0"
                         />
-                        <div className="ml-3">
-                          <span className="text-sm font-medium text-gray-900">{role.name}</span>
+                        <div className="ml-3 min-w-0 flex-1">
+                          <span className="text-sm font-medium text-gray-900 block truncate">{role.name}</span>
                           {role.description && (
-                            <p className="text-xs text-gray-500">{role.description}</p>
+                            <p className="text-xs text-gray-500 truncate">{role.description}</p>
                           )}
                         </div>
                       </label>
@@ -651,22 +651,22 @@ const Permissions = () => {
                   )}
                 </div>
 
-                <div className="flex justify-between items-center pt-4 border-t">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-4 border-t space-y-3 sm:space-y-0">
                   <p className="text-sm text-gray-600">
                     {selectedRoles.length} role(s) selected
                   </p>
-                  <div className="flex space-x-3">
+                  <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
                     <button
                       type="button"
                       onClick={handleCloseAssignModal}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+                      className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 w-full sm:w-auto"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={selectedRoles.length === 0}
-                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                     >
                       Assign to Roles
                     </button>
@@ -680,9 +680,9 @@ const Permissions = () => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && permissionToDelete && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
+          <div className="relative top-4 sm:top-20 mx-auto border shadow-lg rounded-md bg-white max-w-md w-full">
+            <div className="p-4 sm:p-5">
               <div className="flex items-center justify-center mb-4">
                 <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
                   <AlertCircle className="h-6 w-6 text-red-600" />
@@ -699,11 +699,11 @@ const Permissions = () => {
                 </p>
               </div>
 
-              <div className="flex justify-center space-x-3">
+              <div className="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-3">
                 <button
                   type="button"
                   onClick={handleCancelDelete}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto"
                 >
                   Cancel
                 </button>
@@ -711,10 +711,10 @@ const Permissions = () => {
                   type="button"
                   onClick={handleDelete}
                   disabled={loading}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto"
                 >
                   {loading ? (
-                    <div className="flex items-center">
+                    <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                       Deleting...
                     </div>
@@ -728,39 +728,11 @@ const Permissions = () => {
         </div>
       )}
 
-      {/* Toast Notification */}
-      {toast.show && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg transition-all duration-300 ${
-          toast.type === 'success' 
-            ? 'bg-green-50 border border-green-200 text-green-700' 
-            : 'bg-red-50 border border-red-200 text-red-700'
-        }`}>
-          <div className="flex items-center">
-            {toast.type === 'success' ? (
-              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            ) : (
-              <AlertCircle className="w-5 h-5 mr-3" />
-            )}
-            <span className="text-sm font-medium">{toast.message}</span>
-            <button
-              onClick={() => setToast({ show: false, message: '', type: '' })}
-              className={`ml-4 ${
-                toast.type === 'success' ? 'text-green-400 hover:text-green-600' : 'text-red-400 hover:text-red-600'
-              }`}
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Remove Permission Confirmation Modal */}
       {showRemoveModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <div className="mt-3">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 p-4">
+          <div className="relative top-4 sm:top-20 mx-auto border shadow-lg rounded-md bg-white max-w-md w-full">
+            <div className="p-4 sm:p-5">
               <div className="flex items-center justify-center mb-4">
                 <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-orange-100">
                   <AlertCircle className="h-6 w-6 text-orange-600" />
@@ -777,23 +749,51 @@ const Permissions = () => {
                 </p>
               </div>
 
-              <div className="flex justify-center space-x-3">
+              <div className="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-3">
                 <button
                   type="button"
                   onClick={handleCancelRemove}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 w-full sm:w-auto"
                 >
                   Cancel
                 </button>
                 <button
                   type="button"
                   onClick={handleConfirmRemove}
-                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500 w-full sm:w-auto"
                 >
                   Remove Permission
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 left-4 sm:left-auto z-50 p-4 rounded-md shadow-lg transition-all duration-300 ${
+          toast.type === 'success' 
+            ? 'bg-green-50 border border-green-200 text-green-700' 
+            : 'bg-red-50 border border-red-200 text-red-700'
+        }`}>
+          <div className="flex items-center">
+            {toast.type === 'success' ? (
+              <svg className="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0" />
+            )}
+            <span className="text-sm font-medium flex-1">{toast.message}</span>
+            <button
+              onClick={() => setToast({ show: false, message: '', type: '' })}
+              className={`ml-4 flex-shrink-0 ${
+                toast.type === 'success' ? 'text-green-400 hover:text-green-600' : 'text-red-400 hover:text-red-600'
+              }`}
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}
