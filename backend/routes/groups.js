@@ -46,6 +46,7 @@ router.delete('/groups/:id', authenticateToken, checkPermission('Groups', 'delet
     db.prepare('DELETE FROM groups WHERE id = ?').run(id);
     res.status(204).send();
   } catch (error) {
+    console.error('Error deleting group:', error);
     res.status(500).json({ error: 'Failed to delete group' });
   }
 });
