@@ -44,19 +44,14 @@ router.delete('/groups/:id', authenticateToken, checkPermission('Groups', 'delet
   try {
     const { id } = req.params;
     
-    // Use a transaction to ensure all deletions happen atomically
     const transaction = db.transaction(() => {
-      // First, delete all user-group assignments for this group
       db.prepare('DELETE FROM user_groups WHERE group_id = ?').run(id);
       
-      // Delete all group-role assignments for this group
       db.prepare('DELETE FROM group_roles WHERE group_id = ?').run(id);
       
-      // Finally, delete the group itself
       db.prepare('DELETE FROM groups WHERE id = ?').run(id);
     });
     
-    // Execute the transaction
     transaction();
     
     res.status(204).send();
