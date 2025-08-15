@@ -22,7 +22,7 @@ const Permissions = () => {
   const { items: permissions, loading, error } = useSelector(state => state.permissions);
   const { items: modules } = useSelector(state => state.modules);
   const { items: roles } = useSelector(state => state.roles);
-  
+  const [rolePermissions, setRolePermissions] = useState({});
   const [showModal, setShowModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedPermission, setSelectedPermission] = useState(null);
@@ -87,6 +87,31 @@ const Permissions = () => {
     }
   };
 
+  const fetchRolePermissions = async (permissionId) => {
+    try {
+      const response = await fetch(`/api/permissions/${permissionId}/roles`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        const assignedRoleIds = data.roles.map(role => role.id);
+        setRolePermissions(prev => ({
+          ...prev,
+          [permissionId]: assignedRoleIds
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to fetch role permissions:', error);
+    }
+  };
+
+  const getAvailableRoles = (permissionId) => {
+    const assignedRoleIds = rolePermissions[permissionId] || [];
+    return roles.filter(role => !assignedRoleIds.includes(role.id));
+  };
+
   const handleRoleAssignment = async (e) => {
     e.preventDefault();
     try {
@@ -101,6 +126,30 @@ const Permissions = () => {
     } catch (error) {
       console.error('Failed to assign permission to roles:', error);
       showToast(error.message || 'Failed to assign permission to roles', 'error');
+    }
+  };
+
+  const handleRemovePermissionFromRole = async (roleId, permissionId) => {
+    if (window.confirm('Are you sure you want to remove this permission from the role?')) {
+      try {
+        const response = await fetch(`/api/roles/${roleId}/permissions/${permissionId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
+
+        if (response.ok) {
+          showToast('Permission removed from role successfully!', 'success');
+          fetchRolePermissions(permissionId);
+        } else {
+          const errorData = await response.json();
+          showToast(errorData.error || 'Failed to remove permission from role', 'error');
+        }
+      } catch (error) {
+        console.error('Failed to remove permission from role:', error);
+        showToast('Failed to remove permission from role', 'error');
+      }
     }
   };
 
@@ -143,6 +192,7 @@ const Permissions = () => {
     setSelectedPermission(permission);
     setSelectedRoles([]);
     setShowAssignModal(true);
+    fetchRolePermissions(permission.id);
   };
 
   const handleRoleToggle = (roleId) => {
@@ -520,11 +570,37 @@ const Permissions = () => {
               </div>
 
               <form onSubmit={handleRoleAssignment} className="space-y-4">
+                {selectedPermission && rolePermissions[selectedPermission.id] && rolePermissions[selectedPermission.id].length > 0 && (
+                  <div className="mb-4 p-3 bg-gray-50 rounded-md">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">Already assigned to:</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {rolePermissions[selectedPermission.id].map((roleId) => {
+                        const role = roles.find(r => r.id === roleId);
+                        return role ? (
+                          <div
+                            key={roleId}
+                            className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                          >
+                            <span>{role.name}</span>
+                            <button
+                              onClick={() => handleRemovePermissionFromRole(roleId, selectedPermission.id)}
+                              className="ml-2 text-green-600 hover:text-green-800"
+                              title="Remove permission from role"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ) : null;
+                      })}
+                    </div>
+                  </div>
+                )}
+
                 <div className="max-h-64 overflow-y-auto space-y-2">
-                  {roles.length === 0 ? (
-                    <p className="text-gray-500 text-sm">No roles available</p>
+                  {selectedPermission && getAvailableRoles(selectedPermission.id).length === 0 ? (
+                    <p className="text-gray-500 text-sm">No additional roles available - all roles already have this permission</p>
                   ) : (
-                    roles.map((role) => (
+                    selectedPermission && getAvailableRoles(selectedPermission.id).map((role) => (
                       <label
                         key={role.id}
                         className="flex items-center p-3 border border-gray-200 rounded cursor-pointer hover:bg-gray-50"
