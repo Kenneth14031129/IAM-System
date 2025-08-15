@@ -5,7 +5,6 @@ const { authenticateToken, checkPermission } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Users CRUD with permission checking
 router.get('/users', authenticateToken, checkPermission('Users', 'read'), (req, res) => {
   try {
     const users = db.prepare('SELECT id, username, email, created_at FROM users').all();
