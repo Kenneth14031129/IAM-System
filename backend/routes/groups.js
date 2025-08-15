@@ -109,4 +109,20 @@ router.delete('/groups/:groupId/roles/:roleId', authenticateToken, checkPermissi
   }
 });
 
+router.delete('/groups/:groupId/users/:userId', authenticateToken, checkPermission('Groups', 'update'), (req, res) => {
+  try {
+    const { groupId, userId } = req.params;
+    
+    const relationship = db.prepare('SELECT id FROM user_groups WHERE user_id = ? AND group_id = ?').get(userId, groupId);
+    if (!relationship) {
+      return res.status(404).json({ error: 'User is not assigned to this group' });
+    }
+    
+    db.prepare('DELETE FROM user_groups WHERE user_id = ? AND group_id = ?').run(userId, groupId);
+    res.status(200).json({ message: 'User removed from group successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to remove user from group' });
+  }
+});
+
 module.exports = router;
