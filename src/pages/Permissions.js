@@ -27,6 +27,8 @@ const Permissions = () => {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedPermission, setSelectedPermission] = useState(null);
   const [editingPermission, setEditingPermission] = useState(null);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [removePermissionData, setRemovePermissionData] = useState({ roleId: null, permissionId: null, roleName: '', permissionName: '' });
   const [formData, setFormData] = useState({
     name: '',
     action: '',
@@ -129,28 +131,49 @@ const Permissions = () => {
     }
   };
 
-  const handleRemovePermissionFromRole = async (roleId, permissionId) => {
-    if (window.confirm('Are you sure you want to remove this permission from the role?')) {
-      try {
-        const response = await fetch(`/api/roles/${roleId}/permissions/${permissionId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
-        });
+  const handleShowRemoveModal = (roleId, permissionId) => {
+    const role = roles.find(r => r.id === roleId);
+    const permission = selectedPermission;
+    
+    setRemovePermissionData({
+      roleId,
+      permissionId,
+      roleName: role?.name || 'Unknown Role',
+      permissionName: permission?.name || 'Unknown Permission'
+    });
+    setShowRemoveModal(true);
+  };
 
-        if (response.ok) {
-          showToast('Permission removed from role successfully!', 'success');
-          fetchRolePermissions(permissionId);
-        } else {
-          const errorData = await response.json();
-          showToast(errorData.error || 'Failed to remove permission from role', 'error');
+  const handleConfirmRemove = async () => {
+    const { roleId, permissionId } = removePermissionData;
+    
+    try {
+      const response = await fetch(`/api/roles/${roleId}/permissions/${permissionId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
-      } catch (error) {
-        console.error('Failed to remove permission from role:', error);
-        showToast('Failed to remove permission from role', 'error');
+      });
+
+      if (response.ok) {
+        showToast('Permission removed from role successfully!', 'success');
+        fetchRolePermissions(permissionId);
+      } else {
+        const errorData = await response.json();
+        showToast(errorData.error || 'Failed to remove permission from role', 'error');
       }
+    } catch (error) {
+      console.error('Failed to remove permission from role:', error);
+      showToast('Failed to remove permission from role', 'error');
+    } finally {
+      setShowRemoveModal(false);
+      setRemovePermissionData({ roleId: null, permissionId: null, roleName: '', permissionName: '' });
     }
+  };
+
+  const handleCancelRemove = () => {
+    setShowRemoveModal(false);
+    setRemovePermissionData({ roleId: null, permissionId: null, roleName: '', permissionName: '' });
   };
 
   const handleEdit = (permission) => {
@@ -583,7 +606,12 @@ const Permissions = () => {
                           >
                             <span>{role.name}</span>
                             <button
-                              onClick={() => handleRemovePermissionFromRole(roleId, selectedPermission.id)}
+                              type="button"
+                              onClick={(e) => { 
+                                e.preventDefault();  
+                                e.stopPropagation();
+                                handleShowRemoveModal(roleId, selectedPermission.id);
+                              }}
                               className="ml-2 text-green-600 hover:text-green-800"
                               title="Remove permission from role"
                             >
@@ -724,6 +752,48 @@ const Permissions = () => {
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Permission Confirmation Modal */}
+      {showRemoveModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-center mb-4">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-orange-100">
+                  <AlertCircle className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Remove Permission from Role
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Are you sure you want to remove permission <span className="font-semibold text-gray-700">"{removePermissionData.permissionName}"</span> from role <span className="font-semibold text-gray-700">"{removePermissionData.roleName}"</span>? 
+                  This action will revoke this permission from the role.
+                </p>
+              </div>
+
+              <div className="flex justify-center space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCancelRemove}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmRemove}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                >
+                  Remove Permission
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

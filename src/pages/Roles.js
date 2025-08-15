@@ -39,7 +39,9 @@ const Roles = () => {
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState(null);
-
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [removeRoleData, setRemoveRoleData] = useState({ groupId: null, roleId: null, groupName: '', roleName: '' });
+  
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: '' }), 4000);
@@ -141,18 +143,39 @@ const Roles = () => {
     }
   };
 
-  const handleRemoveFromGroup = async (groupId, roleId) => {
-    if (window.confirm('Are you sure you want to remove this role from the group?')) {
-      try {
-        await dispatch(removeRoleFromGroup({ groupId, roleId })).unwrap();
-        showToast('Role removed from group successfully!', 'success');
-        fetchRoleGroups();
-        fetchRoleGroupDetails(roleId);
-      } catch (error) {
-        console.error('Failed to remove role from group:', error);
-        showToast(error.message || 'Failed to remove role from group', 'error');
-      }
+  const handleShowRemoveModal = (groupId, roleId) => {
+    const group = groups.find(g => g.id === groupId);
+    const role = selectedRole;
+    
+    setRemoveRoleData({
+      groupId,
+      roleId,
+      groupName: group?.name || 'Unknown Group',
+      roleName: role?.name || 'Unknown Role'
+    });
+    setShowRemoveModal(true);
+  };
+
+  const handleConfirmRemove = async () => {
+    const { groupId, roleId } = removeRoleData;
+    
+    try {
+      await dispatch(removeRoleFromGroup({ groupId, roleId })).unwrap();
+      showToast('Role removed from group successfully!', 'success');
+      fetchRoleGroups();
+      fetchRoleGroupDetails(roleId);
+    } catch (error) {
+      console.error('Failed to remove role from group:', error);
+      showToast(error.message || 'Failed to remove role from group', 'error');
+    } finally {
+      setShowRemoveModal(false);
+      setRemoveRoleData({ groupId: null, roleId: null, groupName: '', roleName: '' });
     }
+  };
+
+  const handleCancelRemove = () => {
+    setShowRemoveModal(false);
+    setRemoveRoleData({ groupId: null, roleId: null, groupName: '', roleName: '' });
   };
 
   const handleEdit = (role) => {
@@ -459,7 +482,12 @@ const Roles = () => {
                       >
                         <span>{group.name}</span>
                         <button
-                          onClick={() => handleRemoveFromGroup(group.id, selectedRole.id)}
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleShowRemoveModal(group.id, selectedRole.id);
+                          }}
                           className="ml-2 text-blue-600 hover:text-blue-800"
                           title="Remove from group"
                         >
@@ -603,6 +631,48 @@ const Roles = () => {
             >
               <X className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Remove Role from Group Confirmation Modal */}
+      {showRemoveModal && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-center mb-4">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-orange-100">
+                  <AlertCircle className="h-6 w-6 text-orange-600" />
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Remove Role from Group
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Are you sure you want to remove role <span className="font-semibold text-gray-700">"{removeRoleData.roleName}"</span> from group <span className="font-semibold text-gray-700">"{removeRoleData.groupName}"</span>? 
+                  This action will revoke this role assignment from the group.
+                </p>
+              </div>
+
+              <div className="flex justify-center space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCancelRemove}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmRemove}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                >
+                  Remove Role
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
