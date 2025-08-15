@@ -2,6 +2,7 @@
   "name": "iam-system",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://localhost:3001",
   "dependencies": {
     "@reduxjs/toolkit": "^2.8.2",
     "@testing-library/dom": "^10.4.1",
