@@ -3,7 +3,6 @@ import { Provider } from 'react-redux';
 import { store } from './store/store';
 import { useSelector } from 'react-redux';
 
-// Components
 import Navbar from './components/Navbar';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -13,13 +12,11 @@ import Roles from './pages/Roles';
 import Modules from './pages/Modules';
 import Permissions from './pages/Permissions';
 
-// Protected Route wrapper
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated } = useSelector(state => state.auth);
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
-// Main App Layout
 const AppLayout = ({ children }) => {
   const { isAuthenticated } = useSelector(state => state.auth);
   
@@ -33,7 +30,6 @@ const AppLayout = ({ children }) => {
   );
 };
 
-// App Routes Component
 const AppRoutes = () => {
   return (
     <Routes>
@@ -73,7 +69,6 @@ const AppRoutes = () => {
   );
 };
 
-// Main App Component
 function App() {
   return (
     <Provider store={store}>
