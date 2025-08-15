@@ -42,6 +42,14 @@ const Roles = () => {
   const [selectedPermissions, setSelectedPermissions] = useState([]);
   const [selectedGroups, setSelectedGroups] = useState([]);
   const [roleGroupDetails, setRoleGroupDetails] = useState({});
+  const [toast, setToast] = useState({ show: false, message: '', type: '' });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [roleToDelete, setRoleToDelete] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: '' }), 4000);
+  };
 
   const fetchRoleGroups = async () => {
     try {
@@ -109,12 +117,15 @@ const Roles = () => {
           id: editingRole.id, 
           data: formData 
         })).unwrap();
+        showToast('Role updated successfully!', 'success');
       } else {
         await dispatch(rolesThunks.create(formData)).unwrap();
+        showToast('Role created successfully!', 'success');
       }
       handleCloseModal();
     } catch (error) {
       console.error('Failed to save role:', error);
+      showToast(error.message || 'Failed to save role', 'error');
     }
   };
 
@@ -127,9 +138,11 @@ const Roles = () => {
           permissionId: parseInt(permissionId)
         })).unwrap();
       }
+      showToast(`${selectedPermissions.length} permission(s) assigned successfully!`, 'success');
       handleClosePermissionModal();
     } catch (error) {
       console.error('Failed to assign permissions:', error);
+      showToast(error.message || 'Failed to assign permissions', 'error');
     }
   };
 
@@ -142,11 +155,13 @@ const Roles = () => {
           roleId: selectedRole.id
         })).unwrap();
       }
+      showToast(`Role assigned to ${selectedGroups.length} group(s) successfully!`, 'success');
       handleCloseGroupModal();
       fetchRoleGroups();
       fetchRoleGroupDetails(selectedRole.id);
     } catch (error) {
       console.error('Failed to assign role to groups:', error);
+      showToast(error.message || 'Failed to assign role to groups', 'error');
     }
   };
 
@@ -154,10 +169,12 @@ const Roles = () => {
     if (window.confirm('Are you sure you want to remove this role from the group?')) {
       try {
         await dispatch(removeRoleFromGroup({ groupId, roleId })).unwrap();
+        showToast('Role removed from group successfully!', 'success');
         fetchRoleGroups();
         fetchRoleGroupDetails(roleId);
       } catch (error) {
         console.error('Failed to remove role from group:', error);
+        showToast(error.message || 'Failed to remove role from group', 'error');
       }
     }
   };
@@ -171,14 +188,28 @@ const Roles = () => {
     setShowModal(true);
   };
 
-  const handleDelete = async (roleId) => {
-    if (window.confirm('Are you sure you want to delete this role?')) {
-      try {
-        await dispatch(rolesThunks.delete(roleId)).unwrap();
-      } catch (error) {
-        console.error('Failed to delete role:', error);
-      }
+  const handleDelete = async () => {
+    try {
+      await dispatch(rolesThunks.delete(roleToDelete.id)).unwrap();
+      showToast('Role deleted successfully!', 'success');
+      setShowDeleteModal(false);
+      setRoleToDelete(null);
+    } catch (error) {
+      console.error('Failed to delete role:', error);
+      showToast(error.message || 'Failed to delete role', 'error');
+      setShowDeleteModal(false);
+      setRoleToDelete(null);
     }
+  };
+
+  const handleShowDeleteModal = (role) => {
+    setRoleToDelete(role);
+    setShowDeleteModal(true);
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setRoleToDelete(null);
   };
 
   const handleAssignPermissions = (role) => {
@@ -333,7 +364,7 @@ const Roles = () => {
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => handleDelete(role.id)}
+                    onClick={() => handleShowDeleteModal(role)}
                     className="text-red-600 hover:text-red-900 p-1"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -634,6 +665,84 @@ const Roles = () => {
                 </div>
               </form>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && roleToDelete && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex items-center justify-center mb-4">
+                <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <AlertCircle className="h-6 w-6 text-red-600" />
+                </div>
+              </div>
+              
+              <div className="text-center">
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  Delete Role
+                </h3>
+                <p className="text-sm text-gray-500 mb-6">
+                  Are you sure you want to delete role <span className="font-semibold text-gray-700">"{roleToDelete.name}"</span>? 
+                  This action cannot be undone and will permanently remove the role and all associated permissions and group assignments.
+                </p>
+              </div>
+
+              <div className="flex justify-center space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCancelDelete}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  disabled={loading}
+                  className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <div className="flex items-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Deleting...
+                    </div>
+                  ) : (
+                    'Delete Role'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`fixed top-4 right-4 z-50 p-4 rounded-md shadow-lg transition-all duration-300 ${
+          toast.type === 'success' 
+            ? 'bg-green-50 border border-green-200 text-green-700' 
+            : 'bg-red-50 border border-red-200 text-red-700'
+        }`}>
+          <div className="flex items-center">
+            {toast.type === 'success' ? (
+              <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <AlertCircle className="w-5 h-5 mr-3" />
+            )}
+            <span className="text-sm font-medium">{toast.message}</span>
+            <button
+              onClick={() => setToast({ show: false, message: '', type: '' })}
+              className={`ml-4 ${
+                toast.type === 'success' ? 'text-green-400 hover:text-green-600' : 'text-red-400 hover:text-red-600'
+              }`}
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
         </div>
       )}
