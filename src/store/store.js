@@ -331,13 +331,11 @@ export const clearRolesError = rolesSlice.actions.clearError;
 export const clearModulesError = modulesSlice.actions.clearError;
 export const clearPermissionsError = permissionsSlice.actions.clearError;
 
-// Initialize token on app start
 const token = localStorage.getItem('token');
 if (token) {
   setAuthToken(token);
 }
 
-// Configure store
 export const store = configureStore({
   reducer: {
     auth: authSlice.reducer,
