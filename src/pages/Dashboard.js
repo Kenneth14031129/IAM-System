@@ -20,7 +20,6 @@ const Dashboard = () => {
   });
 
   useEffect(() => {
-    // Fetch user permissions when dashboard loads
     dispatch(fetchUserPermissions());
   }, [dispatch]);
 
@@ -49,7 +48,6 @@ const Dashboard = () => {
     });
   };
 
-  // Group permissions by module for better display
   const groupedPermissions = permissions.reduce((acc, permission) => {
     const module = permission.module_name || permission.module;
     if (!acc[module]) {
