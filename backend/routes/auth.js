@@ -36,6 +36,10 @@ router.post('/login', rateLimitAuth, validateLogin, async (req, res) => {
   try {
     const { username, password } = req.body;
 
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+
     const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username.trim());
     
     if (!user || !bcrypt.compareSync(password, user.password)) {
@@ -47,7 +51,8 @@ router.post('/login', rateLimitAuth, validateLogin, async (req, res) => {
 
     res.json({ token, user: userPayload });
   } catch (error) {
-    res.status(500).json({ error: 'Login failed' });
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed', details: error.message });
   }
 });
 

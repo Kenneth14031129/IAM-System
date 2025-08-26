@@ -9,31 +9,36 @@ const securityHeaders = (req, res, next) => {
 const authAttempts = new Map();
 
 const rateLimitAuth = (req, res, next) => {
-  const ip = req.ip || req.connection.remoteAddress;
-  const now = Date.now();
-  const windowMs = 15 * 60 * 1000;
-  const maxAttempts = 10;
+  try {
+    const ip = req.ip || req.connection?.remoteAddress || req.headers['x-forwarded-for'] || 'unknown';
+    const now = Date.now();
+    const windowMs = 15 * 60 * 1000;
+    const maxAttempts = 10;
 
-  if (!authAttempts.has(ip)) {
-    authAttempts.set(ip, { count: 1, resetTime: now + windowMs });
-    return next();
+    if (!authAttempts.has(ip)) {
+      authAttempts.set(ip, { count: 1, resetTime: now + windowMs });
+      return next();
+    }
+
+    const attempts = authAttempts.get(ip);
+    
+    if (now > attempts.resetTime) {
+      authAttempts.set(ip, { count: 1, resetTime: now + windowMs });
+      return next();
+    }
+
+    if (attempts.count >= maxAttempts) {
+      return res.status(429).json({ 
+        error: 'Too many login attempts. Please try again later.' 
+      });
+    }
+
+    attempts.count++;
+    next();
+  } catch (error) {
+    console.warn('Rate limiting error:', error.message);
+    next();
   }
-
-  const attempts = authAttempts.get(ip);
-  
-  if (now > attempts.resetTime) {
-    authAttempts.set(ip, { count: 1, resetTime: now + windowMs });
-    return next();
-  }
-
-  if (attempts.count >= maxAttempts) {
-    return res.status(429).json({ 
-      error: 'Too many login attempts. Please try again later.' 
-    });
-  }
-
-  attempts.count++;
-  next();
 };
 
 module.exports = {

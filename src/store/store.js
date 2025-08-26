@@ -55,7 +55,8 @@ export const fetchUserPermissions = createAsyncThunk(
       const response = await axios.get('/me/permissions');
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || 'Failed to fetch permissions');
+      const message = error.response?.data?.error || 'Failed to fetch permissions';
+      return rejectWithValue(typeof message === 'string' ? message : 'Failed to fetch permissions');
     }
   }
 );
@@ -101,7 +102,7 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = typeof action.payload === 'string' ? action.payload : 'Login failed';
       })
       // Register
       .addCase(registerUser.pending, (state) => {
@@ -117,7 +118,7 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.loading = false;
-        state.error = action.payload;
+        state.error = typeof action.payload === 'string' ? action.payload : 'Registration failed';
       })
       // Permissions
       .addCase(fetchUserPermissions.fulfilled, (state, action) => {
@@ -138,7 +139,8 @@ const createCrudThunks = (entityName) => {
           const response = await axios.get(endpoint);
           return response.data;
         } catch (error) {
-          return rejectWithValue(error.response?.data?.error || `Failed to fetch ${entityName}`);
+          const message = error.response?.data?.error || `Failed to fetch ${entityName}`;
+          return rejectWithValue(typeof message === 'string' ? message : `Failed to fetch ${entityName}`);
         }
       }
     ),

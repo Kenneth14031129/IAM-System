@@ -34,6 +34,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
+// Debug route for API
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'API is working', environment: process.env.NODE_ENV });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -44,17 +49,23 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+// Initialize database
 try {
   console.log('Initializing database...');
   initDatabase();
   console.log('✅ Database initialized successfully');
-  
+} catch (error) {
+  console.error('❌ Error initializing database:', error.message);
+}
+
+// For Vercel, export the app instead of listening
+if (process.env.NODE_ENV !== 'production') {
   app.listen(PORT, () => {
     console.log(`✅ Server running on http://localhost:${PORT}`);
     console.log('Default admin credentials:');
     console.log('Username: admin');
     console.log('Password: admin123');
   });
-} catch (error) {
-  console.error('❌ Error starting server:', error.message);
 }
+
+module.exports = app;
