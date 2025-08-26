@@ -129,7 +129,7 @@ const authSlice = createSlice({
 
 // Generic CRUD Async Thunks
 const createCrudThunks = (entityName) => {
-  const endpoint = `/${entityName}`;
+  const endpoint = `/admin?entity=${entityName}`;
   
   return {
     fetchAll: createAsyncThunk(
@@ -161,7 +161,7 @@ const createCrudThunks = (entityName) => {
       `${entityName}/update`,
       async ({ id, data }, { rejectWithValue }) => {
         try {
-          const response = await axios.put(`${endpoint}/${id}`, data);
+          const response = await axios.put(endpoint, { id, ...data });
           return response.data;
         } catch (error) {
           return rejectWithValue(error.response?.data?.error || `Failed to update ${entityName}`);
@@ -173,7 +173,7 @@ const createCrudThunks = (entityName) => {
       `${entityName}/delete`,
       async (id, { rejectWithValue }) => {
         try {
-          await axios.delete(`${endpoint}/${id}`);
+          await axios.delete(`${endpoint}&id=${id}`);
           return id;
         } catch (error) {
           return rejectWithValue(error.response?.data?.error || `Failed to delete ${entityName}`);

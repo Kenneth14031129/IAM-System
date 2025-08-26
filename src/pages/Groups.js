@@ -48,11 +48,11 @@ const Groups = () => {
     try {
       const token = localStorage.getItem('token');
       
-      const userGroupsResponse = await axios.get('/user-groups', {
+      const userGroupsResponse = await axios.get('/admin?entity=user-groups', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       
-      const roleGroupsResponse = await axios.get('/role-groups', {
+      const roleGroupsResponse = await axios.get('/admin?entity=role-groups', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       

@@ -41,7 +41,7 @@ const Users = () => {
   const fetchUserGroups = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await axios.get('/user-groups', {
+      const response = await axios.get('/admin?entity=user-groups', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
