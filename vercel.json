@@ -15,6 +15,13 @@
   ],
   "routes": [
     {
+      "src": "/manifest.json",
+      "dest": "/manifest.json",
+      "headers": {
+        "Cache-Control": "public, max-age=86400"
+      }
+    },
+    {
       "src": "/api/(.*)",
       "dest": "/backend/server.js"
     },

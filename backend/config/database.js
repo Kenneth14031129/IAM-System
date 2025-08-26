@@ -1,11 +1,33 @@
 const Database = require('better-sqlite3');
 const bcrypt = require('bcryptjs');
 
-const db = new Database(':memory:');
+const path = require('path');
+const fs = require('fs');
+
+// Use persistent database file for production
+const dbPath = process.env.NODE_ENV === 'production' ? 
+  path.join('/tmp', 'database.db') : 
+  path.join(__dirname, '..', 'database.db');
+
+// Ensure directory exists
+const dbDir = path.dirname(dbPath);
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+const db = new Database(dbPath);
 
 function initDatabase() {
-  createTables();
-  seedDatabase();
+  // Check if database is already initialized
+  const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='users'").get();
+  
+  if (!tableExists) {
+    createTables();
+    seedDatabase();
+    console.log('Database initialized with seed data');
+  } else {
+    console.log('Database already exists, skipping initialization');
+  }
 }
 
 function createTables() {

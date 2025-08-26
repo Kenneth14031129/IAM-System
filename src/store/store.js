@@ -25,7 +25,8 @@ export const loginUser = createAsyncThunk(
       setAuthToken(token);
       return { token, user };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || 'Login failed');
+      const message = error.response?.data?.error || 'Login failed';
+      return rejectWithValue(new Error(message).message);
     }
   }
 );
@@ -41,7 +42,8 @@ export const registerUser = createAsyncThunk(
       setAuthToken(token);
       return { token, user };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || 'Registration failed');
+      const message = error.response?.data?.error || 'Registration failed';
+      return rejectWithValue(new Error(message).message);
     }
   }
 );
