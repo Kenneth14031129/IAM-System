@@ -1,6 +1,15 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { initDatabase, db } = require('../backend/config/database');
+
+// Import database - handle potential import issues
+let initDatabase, db;
+try {
+  const dbModule = require('../backend/config/database');
+  initDatabase = dbModule.initDatabase;
+  db = dbModule.db;
+} catch (error) {
+  console.error('Database module import error:', error);
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -77,7 +86,7 @@ const validateRegistration = (req, res) => {
 // Initialize database once
 let dbInitialized = false;
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');

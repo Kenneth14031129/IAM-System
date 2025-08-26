@@ -1,4 +1,4 @@
-export default function handler(req, res) {
+module.exports = (req, res) => {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,7 +12,9 @@ export default function handler(req, res) {
 
   res.json({ 
     message: 'API is working', 
-    environment: process.env.NODE_ENV,
-    timestamp: new Date().toISOString()
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    method: req.method,
+    url: req.url
   });
-}
+};

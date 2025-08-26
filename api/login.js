@@ -1,6 +1,15 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { initDatabase, db } = require('../backend/config/database');
+
+// Import database - handle potential import issues
+let initDatabase, db;
+try {
+  const dbModule = require('../backend/config/database');
+  initDatabase = dbModule.initDatabase;
+  db = dbModule.db;
+} catch (error) {
+  console.error('Database module import error:', error);
+}
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -60,7 +69,7 @@ const validateLogin = (req, res) => {
 // Initialize database once
 let dbInitialized = false;
 
-export default async function handler(req, res) {
+module.exports = async (req, res) => {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Credentials', true);
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -80,12 +89,15 @@ export default async function handler(req, res) {
   if (!dbInitialized) {
     try {
       console.log('Initializing database for serverless function...');
+      if (!initDatabase || !db) {
+        throw new Error('Database modules not available');
+      }
       initDatabase();
       dbInitialized = true;
       console.log('✅ Database initialized successfully');
     } catch (error) {
       console.error('❌ Error initializing database:', error.message);
-      return res.status(500).json({ error: 'Database initialization failed' });
+      return res.status(500).json({ error: 'Database initialization failed', details: error.message });
     }
   }
 
