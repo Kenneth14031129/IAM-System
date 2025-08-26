@@ -9,21 +9,14 @@
       }
     },
     {
-      "src": "api/index.js",
+      "src": "backend/server.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
-      "src": "/manifest.json",
-      "dest": "/manifest.json",
-      "headers": {
-        "Cache-Control": "public, max-age=86400"
-      }
-    },
-    {
       "src": "/api/(.*)",
-      "dest": "/api/index.js"
+      "dest": "/backend/server.js"
     },
     {
       "src": "/(.*)",
