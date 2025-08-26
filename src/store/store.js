@@ -3,9 +3,6 @@ import axios from 'axios';
 
 const API_BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:3001/api';
 
-console.log('API Base URL:', API_BASE_URL);
-console.log('Environment:', process.env.NODE_ENV);
-
 axios.defaults.baseURL = API_BASE_URL;
 
 const setAuthToken = (token) => {
@@ -21,7 +18,6 @@ export const loginUser = createAsyncThunk(
   'auth/login',
   async ({ username, password }, { rejectWithValue }) => {
     try {
-      console.log('Making login request to:', axios.defaults.baseURL + '/login');
       const response = await axios.post('/login', { username, password });
       const { token, user } = response.data;
       localStorage.setItem('token', token);
