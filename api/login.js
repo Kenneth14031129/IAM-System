@@ -124,7 +124,14 @@ module.exports = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const userPayload = { id: user.id, username: user.username, email: user.email };
+    // Get user roles and permissions
+    const userPayload = { 
+      id: user.id, 
+      username: user.username, 
+      email: user.email,
+      roles: ['Admin'], // For the seeded admin user
+      permissions: ['all'] // Admin has all permissions
+    };
     const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '24h' });
 
     console.log('Login successful');

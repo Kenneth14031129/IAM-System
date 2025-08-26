@@ -52,6 +52,21 @@ const db = {
         dataStore.roles.push({ id, name: param1, description: param2 });
         return { lastInsertRowid: id };
       }
+      if (query.includes('INSERT INTO user_groups')) {
+        const id = dataStore.user_groups.length + 1;
+        dataStore.user_groups.push({ id, user_id: param1, group_id: param2 });
+        return { lastInsertRowid: id };
+      }
+      if (query.includes('INSERT INTO group_roles')) {
+        const id = dataStore.group_roles.length + 1;
+        dataStore.group_roles.push({ id, group_id: param1, role_id: param2 });
+        return { lastInsertRowid: id };
+      }
+      if (query.includes('INSERT INTO role_permissions')) {
+        const id = dataStore.role_permissions.length + 1;
+        dataStore.role_permissions.push({ id, role_id: param1, permission_id: param2 });
+        return { lastInsertRowid: id };
+      }
       return { lastInsertRowid: 1 };
     }
   }),
