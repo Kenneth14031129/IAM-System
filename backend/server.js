@@ -15,10 +15,29 @@ const relationshipRoutes = require('./routes/relationships');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Initialize database on each request for serverless
+let dbInitialized = false;
+
+const initDatabaseMiddleware = (req, res, next) => {
+  if (!dbInitialized) {
+    try {
+      console.log('Initializing database...');
+      initDatabase();
+      dbInitialized = true;
+      console.log('✅ Database initialized successfully');
+    } catch (error) {
+      console.error('❌ Error initializing database:', error.message);
+      return res.status(500).json({ error: 'Database initialization failed' });
+    }
+  }
+  next();
+};
+
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(securityHeaders);
+app.use(initDatabaseMiddleware);
 
 // Routes
 app.use('/api', authRoutes);
@@ -49,14 +68,6 @@ app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Initialize database
-try {
-  console.log('Initializing database...');
-  initDatabase();
-  console.log('✅ Database initialized successfully');
-} catch (error) {
-  console.error('❌ Error initializing database:', error.message);
-}
 
 // For Vercel, export the app instead of listening
 if (process.env.NODE_ENV !== 'production') {

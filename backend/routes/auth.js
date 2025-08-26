@@ -34,21 +34,26 @@ router.post('/register', rateLimitAuth, validateRegistration, async (req, res) =
 // Login route
 router.post('/login', rateLimitAuth, validateLogin, async (req, res) => {
   try {
+    console.log('Login attempt received:', { username: req.body.username });
     const { username, password } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
+    console.log('Looking up user in database...');
     const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username.trim());
+    console.log('User found:', !!user);
     
     if (!user || !bcrypt.compareSync(password, user.password)) {
+      console.log('Invalid credentials');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const userPayload = { id: user.id, username: user.username, email: user.email };
     const token = jwt.sign(userPayload, JWT_SECRET, { expiresIn: '24h' });
 
+    console.log('Login successful');
     res.json({ token, user: userPayload });
   } catch (error) {
     console.error('Login error:', error);
