@@ -1,83 +1,94 @@
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
-// Serverless-compatible in-memory data store
-let dataStore = {
-  users: [],
-  groups: [],
-  roles: [],
-  modules: [],
-  permissions: [],
-  user_groups: [],
-  group_roles: [],
-  role_permissions: []
-};
-
-// Simple database operations for serverless
-const db = {
-  prepare: (query) => ({
-    get: (params) => {
-      if (query.includes('SELECT * FROM users WHERE username = ?')) {
-        return dataStore.users.find(user => user.username === params);
-      }
-      return null;
-    },
-    all: () => {
-      if (query.includes('SELECT * FROM modules')) return dataStore.modules;
-      if (query.includes('SELECT id FROM permissions')) return dataStore.permissions;
-      return [];
-    },
-    run: (param1, param2, param3, param4) => {
-      if (query.includes('INSERT INTO modules')) {
-        const id = dataStore.modules.length + 1;
-        dataStore.modules.push({ id, name: param1, description: param2 });
-        return { lastInsertRowid: id };
-      }
-      if (query.includes('INSERT INTO permissions')) {
-        const id = dataStore.permissions.length + 1;
-        dataStore.permissions.push({ id, name: param1, action: param2, module_id: param3, description: param4 });
-        return { lastInsertRowid: id };
-      }
-      if (query.includes('INSERT INTO users')) {
-        const id = dataStore.users.length + 1;
-        dataStore.users.push({ id, username: param1, email: param2, password: param3 });
-        return { lastInsertRowid: id };
-      }
-      if (query.includes('INSERT INTO groups')) {
-        const id = dataStore.groups.length + 1;
-        dataStore.groups.push({ id, name: param1, description: param2 });
-        return { lastInsertRowid: id };
-      }
-      if (query.includes('INSERT INTO roles')) {
-        const id = dataStore.roles.length + 1;
-        dataStore.roles.push({ id, name: param1, description: param2 });
-        return { lastInsertRowid: id };
-      }
-      if (query.includes('INSERT INTO user_groups')) {
-        const id = dataStore.user_groups.length + 1;
-        dataStore.user_groups.push({ id, user_id: param1, group_id: param2 });
-        return { lastInsertRowid: id };
-      }
-      if (query.includes('INSERT INTO group_roles')) {
-        const id = dataStore.group_roles.length + 1;
-        dataStore.group_roles.push({ id, group_id: param1, role_id: param2 });
-        return { lastInsertRowid: id };
-      }
-      if (query.includes('INSERT INTO role_permissions')) {
-        const id = dataStore.role_permissions.length + 1;
-        dataStore.role_permissions.push({ id, role_id: param1, permission_id: param2 });
-        return { lastInsertRowid: id };
-      }
-      return { lastInsertRowid: 1 };
-    }
-  }),
-  exec: () => {} // No-op for table creation in serverless
-};
-
-function initDatabase() {
+// MongoDB connection
+const connectDB = async () => {
   try {
-    // Always recreate for in-memory database
-    createTables();
-    seedDatabase();
+    if (!process.env.MONGODB_URI) {
+      console.warn('⚠️ MONGODB_URI not set. Please configure MongoDB connection in .env file');
+      console.log('For local MongoDB: MONGODB_URI=mongodb://localhost:27017/iam-system');
+      console.log('For MongoDB Atlas: MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/iam-system');
+      throw new Error('MongoDB URI not configured');
+    }
+    
+    const conn = await mongoose.connect(process.env.MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
+    return true;
+  } catch (error) {
+    console.error('❌ MongoDB connection failed:', error.message);
+    throw error;
+  }
+};
+
+// Schemas
+const UserSchema = new mongoose.Schema({
+  username: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  created_at: { type: Date, default: Date.now }
+});
+
+const GroupSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  description: String,
+  created_at: { type: Date, default: Date.now }
+});
+
+const RoleSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  description: String,
+  created_at: { type: Date, default: Date.now }
+});
+
+const ModuleSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  description: String,
+  created_at: { type: Date, default: Date.now }
+});
+
+const PermissionSchema = new mongoose.Schema({
+  name: { type: String, required: true, unique: true },
+  action: { type: String, required: true },
+  module_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Module', required: true },
+  description: String,
+  created_at: { type: Date, default: Date.now }
+});
+
+const UserGroupSchema = new mongoose.Schema({
+  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  group_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Group', required: true },
+  created_at: { type: Date, default: Date.now }
+});
+
+const GroupRoleSchema = new mongoose.Schema({
+  group_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Group', required: true },
+  role_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true },
+  created_at: { type: Date, default: Date.now }
+});
+
+const RolePermissionSchema = new mongoose.Schema({
+  role_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Role', required: true },
+  permission_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Permission', required: true },
+  created_at: { type: Date, default: Date.now }
+});
+
+// Models
+const User = mongoose.model('User', UserSchema);
+const Group = mongoose.model('Group', GroupSchema);
+const Role = mongoose.model('Role', RoleSchema);
+const Module = mongoose.model('Module', ModuleSchema);
+const Permission = mongoose.model('Permission', PermissionSchema);
+const UserGroup = mongoose.model('UserGroup', UserGroupSchema);
+const GroupRole = mongoose.model('GroupRole', GroupRoleSchema);
+const RolePermission = mongoose.model('RolePermission', RolePermissionSchema);
+
+async function initDatabase() {
+  try {
+    await connectDB();
+    await seedDatabase();
     console.log('Database initialized with seed data');
   } catch (error) {
     console.error('Database initialization error:', error.message);
@@ -85,59 +96,91 @@ function initDatabase() {
   }
 }
 
-function createTables() {
-  // No-op for serverless - using in-memory data store
-  console.log('Tables created (in-memory)');
-}
+async function seedDatabase() {
+  try {
+    // Check if data already exists
+    const existingUser = await User.findOne({ username: 'admin' });
+    if (existingUser) {
+      console.log('Database already seeded');
+      return;
+    }
 
-function seedDatabase() {
-  const modules = [
-    { name: 'Users', description: 'User management' },
-    { name: 'Groups', description: 'Group management' },
-    { name: 'Roles', description: 'Role management' },
-    { name: 'Modules', description: 'Module management' },
-    { name: 'Permissions', description: 'Permission management' }
-  ];
+    const modules = [
+      { name: 'Users', description: 'User management' },
+      { name: 'Groups', description: 'Group management' },
+      { name: 'Roles', description: 'Role management' },
+      { name: 'Modules', description: 'Module management' },
+      { name: 'Permissions', description: 'Permission management' }
+    ];
 
-  const insertModule = db.prepare('INSERT INTO modules (name, description) VALUES (?, ?)');
-  modules.forEach(module => insertModule.run(module.name, module.description));
+    const createdModules = await Module.insertMany(modules);
 
-  const actions = ['create', 'read', 'update', 'delete'];
-  const insertPermission = db.prepare('INSERT INTO permissions (name, action, module_id, description) VALUES (?, ?, ?, ?)');
-  
-  const moduleRecords = db.prepare('SELECT * FROM modules').all();
-  moduleRecords.forEach(module => {
-    actions.forEach(action => {
-      insertPermission.run(
-        `${action}_${module.name.toLowerCase()}`,
-        action,
-        module.id,
-        `${action.charAt(0).toUpperCase() + action.slice(1)} ${module.name.toLowerCase()}`
-      );
+    const actions = ['create', 'read', 'update', 'delete'];
+    const permissions = [];
+    
+    createdModules.forEach(module => {
+      actions.forEach(action => {
+        permissions.push({
+          name: `${action}_${module.name.toLowerCase()}`,
+          action: action,
+          module_id: module._id,
+          description: `${action.charAt(0).toUpperCase() + action.slice(1)} ${module.name.toLowerCase()}`
+        });
+      });
     });
-  });
 
-  const hashedPassword = bcrypt.hashSync('admin123', 10);
-  const insertUser = db.prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)');
-  insertUser.run('admin', 'admin@example.com', hashedPassword);
+    const createdPermissions = await Permission.insertMany(permissions);
 
-  const insertGroup = db.prepare('INSERT INTO groups (name, description) VALUES (?, ?)');
-  insertGroup.run('Administrators', 'Full system access');
+    const hashedPassword = bcrypt.hashSync('admin123', 10);
+    const adminUser = await User.create({
+      username: 'admin',
+      email: 'admin@example.com',
+      password: hashedPassword
+    });
 
-  const insertRole = db.prepare('INSERT INTO roles (name, description) VALUES (?, ?)');
-  insertRole.run('Admin', 'Administrator role with all permissions');
+    const adminGroup = await Group.create({
+      name: 'Administrators',
+      description: 'Full system access'
+    });
 
-  const insertUserGroup = db.prepare('INSERT INTO user_groups (user_id, group_id) VALUES (?, ?)');
-  insertUserGroup.run(1, 1);
+    const adminRole = await Role.create({
+      name: 'Admin',
+      description: 'Administrator role with all permissions'
+    });
 
-  const insertGroupRole = db.prepare('INSERT INTO group_roles (group_id, role_id) VALUES (?, ?)');
-  insertGroupRole.run(1, 1);
+    await UserGroup.create({
+      user_id: adminUser._id,
+      group_id: adminGroup._id
+    });
 
-  const permissions = db.prepare('SELECT id FROM permissions').all();
-  const insertRolePermission = db.prepare('INSERT INTO role_permissions (role_id, permission_id) VALUES (?, ?)');
-  permissions.forEach(permission => {
-    insertRolePermission.run(1, permission.id);
-  });
+    await GroupRole.create({
+      group_id: adminGroup._id,
+      role_id: adminRole._id
+    });
+
+    const rolePermissions = createdPermissions.map(permission => ({
+      role_id: adminRole._id,
+      permission_id: permission._id
+    }));
+    
+    await RolePermission.insertMany(rolePermissions);
+    
+    console.log('Database seeded successfully');
+  } catch (error) {
+    console.error('Seed database error:', error);
+    throw error;
+  }
 }
 
-module.exports = { db, initDatabase };
+module.exports = { 
+  connectDB, 
+  initDatabase, 
+  User, 
+  Group, 
+  Role, 
+  Module, 
+  Permission, 
+  UserGroup, 
+  GroupRole, 
+  RolePermission 
+};

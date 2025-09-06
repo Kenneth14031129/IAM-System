@@ -1,91 +1,147 @@
 const express = require('express');
-const { db } = require('../config/database');
+const { User, Group, Role, Module, Permission, UserGroup, GroupRole, RolePermission } = require('../config/database');
 const { authenticateToken, checkPermission } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/role-groups', authenticateToken, checkPermission('Roles', 'read'), (req, res) => {
+router.get('/role-groups', authenticateToken, checkPermission('Roles', 'read'), async (req, res) => {
   try {
-    const roleGroups = db.prepare(`
-      SELECT gr.role_id, gr.group_id, g.name as group_name, r.name as role_name
-      FROM group_roles gr
-      JOIN groups g ON gr.group_id = g.id
-      JOIN roles r ON gr.role_id = r.id
-      ORDER BY r.name, g.name
-    `).all();
-    res.json(roleGroups);
+    const roleGroups = await GroupRole.find()
+      .populate('group_id', 'name')
+      .populate('role_id', 'name')
+      .sort({ 'role_id.name': 1, 'group_id.name': 1 });
+    
+    const formattedRoleGroups = roleGroups.map(gr => ({
+      role_id: gr.role_id._id,
+      group_id: gr.group_id._id,
+      group_name: gr.group_id.name,
+      role_name: gr.role_id.name
+    }));
+    
+    res.json(formattedRoleGroups);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch role-group relationships' });
   }
 });
 
-router.get('/user-access-report', authenticateToken, checkPermission('Users', 'read'), (req, res) => {
+router.get('/user-access-report', authenticateToken, checkPermission('Users', 'read'), async (req, res) => {
   try {
-    const userAccess = db.prepare(`
-      SELECT 
-        u.id as user_id,
-        u.username,
-        u.email,
-        g.id as group_id,
-        g.name as group_name,
-        r.id as role_id,
-        r.name as role_name,
-        p.id as permission_id,
-        p.name as permission_name,
-        p.action,
-        m.name as module_name
-      FROM users u
-      JOIN user_groups ug ON u.id = ug.user_id
-      JOIN groups g ON ug.group_id = g.id
-      JOIN group_roles gr ON g.id = gr.group_id
-      JOIN roles r ON gr.role_id = r.id
-      JOIN role_permissions rp ON r.id = rp.role_id
-      JOIN permissions p ON rp.permission_id = p.id
-      JOIN modules m ON p.module_id = m.id
-      ORDER BY u.username, g.name, r.name, m.name, p.action
-    `).all();
+    const userAccess = await UserGroup.aggregate([
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user_id',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      { $unwind: '$user' },
+      {
+        $lookup: {
+          from: 'groups',
+          localField: 'group_id',
+          foreignField: '_id',
+          as: 'group'
+        }
+      },
+      { $unwind: '$group' },
+      {
+        $lookup: {
+          from: 'grouproles',
+          localField: 'group_id',
+          foreignField: 'group_id',
+          as: 'groupRoles'
+        }
+      },
+      { $unwind: '$groupRoles' },
+      {
+        $lookup: {
+          from: 'roles',
+          localField: 'groupRoles.role_id',
+          foreignField: '_id',
+          as: 'role'
+        }
+      },
+      { $unwind: '$role' },
+      {
+        $lookup: {
+          from: 'rolepermissions',
+          localField: 'role._id',
+          foreignField: 'role_id',
+          as: 'rolePermissions'
+        }
+      },
+      { $unwind: '$rolePermissions' },
+      {
+        $lookup: {
+          from: 'permissions',
+          localField: 'rolePermissions.permission_id',
+          foreignField: '_id',
+          as: 'permission'
+        }
+      },
+      { $unwind: '$permission' },
+      {
+        $lookup: {
+          from: 'modules',
+          localField: 'permission.module_id',
+          foreignField: '_id',
+          as: 'module'
+        }
+      },
+      { $unwind: '$module' },
+      {
+        $sort: {
+          'user.username': 1,
+          'group.name': 1,
+          'role.name': 1,
+          'module.name': 1,
+          'permission.action': 1
+        }
+      }
+    ]);
     
     const userMap = {};
     userAccess.forEach(row => {
-      const userId = row.user_id;
+      const userId = row.user._id.toString();
       if (!userMap[userId]) {
         userMap[userId] = {
           user: {
             id: userId,
-            username: row.username,
-            email: row.email
+            username: row.user.username,
+            email: row.user.email
           },
           groups: {},
           permissions: new Set()
         };
       }
       
-      const groupId = row.group_id;
+      const groupId = row.group._id.toString();
       if (!userMap[userId].groups[groupId]) {
         userMap[userId].groups[groupId] = {
           id: groupId,
-          name: row.group_name,
+          name: row.group.name,
           roles: {}
         };
       }
       
-      const roleId = row.role_id;
+      const roleId = row.role._id.toString();
       if (!userMap[userId].groups[groupId].roles[roleId]) {
         userMap[userId].groups[groupId].roles[roleId] = {
           id: roleId,
-          name: row.role_name,
+          name: row.role.name,
           permissions: []
         };
       }
       
       userMap[userId].groups[groupId].roles[roleId].permissions.push({
-        id: row.permission_id,
-        name: row.permission_name,
-        action: row.action,
-        module: row.module_name
+        id: row.permission._id,
+        name: row.permission.name,
+        action: row.permission.action,
+        module: row.module.name
       });
       
-      userMap[userId].permissions.add(`${row.action}_${row.module_name}`);
+      userMap[userId].permissions.add(`${row.permission.action}_${row.module.name}`);
     });
     
     const result = Object.values(userMap).map(userData => ({
@@ -104,60 +160,78 @@ router.get('/user-access-report', authenticateToken, checkPermission('Users', 'r
   }
 });
 
-router.get('/system-overview', authenticateToken, (req, res) => {
+router.get('/system-overview', authenticateToken, async (req, res) => {
   try {
     const stats = {
-      users: db.prepare('SELECT COUNT(*) as count FROM users').get().count,
-      groups: db.prepare('SELECT COUNT(*) as count FROM groups').get().count,
-      roles: db.prepare('SELECT COUNT(*) as count FROM roles').get().count,
-      modules: db.prepare('SELECT COUNT(*) as count FROM modules').get().count,
-      permissions: db.prepare('SELECT COUNT(*) as count FROM permissions').get().count,
-      userGroups: db.prepare('SELECT COUNT(*) as count FROM user_groups').get().count,
-      groupRoles: db.prepare('SELECT COUNT(*) as count FROM group_roles').get().count,
-      rolePermissions: db.prepare('SELECT COUNT(*) as count FROM role_permissions').get().count
+      users: await User.countDocuments(),
+      groups: await Group.countDocuments(),
+      roles: await Role.countDocuments(),
+      modules: await Module.countDocuments(),
+      permissions: await Permission.countDocuments(),
+      userGroups: await UserGroup.countDocuments(),
+      groupRoles: await GroupRole.countDocuments(),
+      rolePermissions: await RolePermission.countDocuments()
     };
     
-    const recentUsers = db.prepare(`
-      SELECT 'user' as type, username as name, created_at 
-      FROM users 
-      ORDER BY created_at DESC 
-      LIMIT 5
-    `).all();
+    const recentUsers = await User.find()
+      .select('username created_at')
+      .sort({ created_at: -1 })
+      .limit(5);
     
-    const recentGroups = db.prepare(`
-      SELECT 'group' as type, name, created_at 
-      FROM groups 
-      ORDER BY created_at DESC 
-      LIMIT 3
-    `).all();
+    const recentGroups = await Group.find()
+      .select('name created_at')
+      .sort({ created_at: -1 })
+      .limit(3);
     
-    const recentRoles = db.prepare(`
-      SELECT 'role' as type, name, created_at 
-      FROM roles 
-      ORDER BY created_at DESC 
-      LIMIT 2
-    `).all();
+    const recentRoles = await Role.find()
+      .select('name created_at')
+      .sort({ created_at: -1 })
+      .limit(2);
     
-    const recentActivity = [...recentUsers, ...recentGroups, ...recentRoles]
+    const recentActivity = [
+      ...recentUsers.map(u => ({ type: 'user', name: u.username, created_at: u.created_at })),
+      ...recentGroups.map(g => ({ type: 'group', name: g.name, created_at: g.created_at })),
+      ...recentRoles.map(r => ({ type: 'role', name: r.name, created_at: r.created_at }))
+    ]
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       .slice(0, 10);
     
-    const permissionsByModule = db.prepare(`
-      SELECT m.name as module_name, COUNT(p.id) as permission_count
-      FROM modules m
-      LEFT JOIN permissions p ON m.id = p.module_id
-      GROUP BY m.id, m.name
-      ORDER BY permission_count DESC
-    `).all();
+    const permissionsByModule = await Module.aggregate([
+      {
+        $lookup: {
+          from: 'permissions',
+          localField: '_id',
+          foreignField: 'module_id',
+          as: 'permissions'
+        }
+      },
+      {
+        $project: {
+          module_name: '$name',
+          permission_count: { $size: '$permissions' }
+        }
+      },
+      { $sort: { permission_count: -1 } }
+    ]);
     
-    const activeUsers = db.prepare(`
-      SELECT u.username, COUNT(ug.group_id) as group_count
-      FROM users u
-      LEFT JOIN user_groups ug ON u.id = ug.user_id
-      GROUP BY u.id, u.username
-      ORDER BY group_count DESC
-      LIMIT 5
-    `).all();
+    const activeUsers = await User.aggregate([
+      {
+        $lookup: {
+          from: 'usergroups',
+          localField: '_id',
+          foreignField: 'user_id',
+          as: 'userGroups'
+        }
+      },
+      {
+        $project: {
+          username: 1,
+          group_count: { $size: '$userGroups' }
+        }
+      },
+      { $sort: { group_count: -1 } },
+      { $limit: 5 }
+    ]);
     
     res.json({
       stats,
@@ -170,81 +244,151 @@ router.get('/system-overview', authenticateToken, (req, res) => {
   }
 });
 
-router.delete('/users/:userId/groups/:groupId', authenticateToken, checkPermission('Groups', 'update'), (req, res) => {
+router.delete('/users/:userId/groups/:groupId', authenticateToken, checkPermission('Groups', 'update'), async (req, res) => {
   try {
     const { userId, groupId } = req.params;
     
-    const relationship = db.prepare('SELECT id FROM user_groups WHERE user_id = ? AND group_id = ?').get(userId, groupId);
+    const relationship = await UserGroup.findOne({ user_id: userId, group_id: groupId });
     if (!relationship) {
       return res.status(404).json({ error: 'User is not assigned to this group' });
     }
     
-    db.prepare('DELETE FROM user_groups WHERE user_id = ? AND group_id = ?').run(userId, groupId);
+    await UserGroup.deleteOne({ user_id: userId, group_id: groupId });
     res.status(200).json({ message: 'User removed from group successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to remove user from group' });
   }
 });
 
-router.get('/users/:userId/effective-permissions', authenticateToken, checkPermission('Users', 'read'), (req, res) => {
+router.get('/users/:userId/effective-permissions', authenticateToken, checkPermission('Users', 'read'), async (req, res) => {
   try {
     const { userId } = req.params;
     
-    const user = db.prepare('SELECT id, username, email FROM users WHERE id = ?').get(userId);
+    const user = await User.findById(userId).select('id username email');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    const permissions = db.prepare(`
-      SELECT DISTINCT 
-        p.id,
-        p.name,
-        p.action,
-        p.description,
-        m.name as module_name,
-        r.name as role_name,
-        g.name as group_name
-      FROM permissions p
-      JOIN modules m ON p.module_id = m.id
-      JOIN role_permissions rp ON p.id = rp.permission_id
-      JOIN roles r ON rp.role_id = r.id
-      JOIN group_roles gr ON r.id = gr.role_id
-      JOIN groups g ON gr.group_id = g.id
-      JOIN user_groups ug ON g.id = ug.group_id
-      WHERE ug.user_id = ?
-      ORDER BY m.name, p.action
-    `).all(userId);
+    const permissions = await UserGroup.aggregate([
+      { $match: { user_id: user._id } },
+      {
+        $lookup: {
+          from: 'grouproles',
+          localField: 'group_id',
+          foreignField: 'group_id',
+          as: 'groupRoles'
+        }
+      },
+      { $unwind: '$groupRoles' },
+      {
+        $lookup: {
+          from: 'rolepermissions',
+          localField: 'groupRoles.role_id',
+          foreignField: 'role_id',
+          as: 'rolePermissions'
+        }
+      },
+      { $unwind: '$rolePermissions' },
+      {
+        $lookup: {
+          from: 'permissions',
+          localField: 'rolePermissions.permission_id',
+          foreignField: '_id',
+          as: 'permission'
+        }
+      },
+      { $unwind: '$permission' },
+      {
+        $lookup: {
+          from: 'modules',
+          localField: 'permission.module_id',
+          foreignField: '_id',
+          as: 'module'
+        }
+      },
+      { $unwind: '$module' },
+      {
+        $lookup: {
+          from: 'roles',
+          localField: 'groupRoles.role_id',
+          foreignField: '_id',
+          as: 'role'
+        }
+      },
+      { $unwind: '$role' },
+      {
+        $lookup: {
+          from: 'groups',
+          localField: 'group_id',
+          foreignField: '_id',
+          as: 'group'
+        }
+      },
+      { $unwind: '$group' },
+      {
+        $group: {
+          _id: {
+            permissionId: '$permission._id',
+            moduleId: '$module._id'
+          },
+          permission: { $first: '$permission' },
+          module: { $first: '$module' },
+          roles: { $addToSet: '$role.name' },
+          groups: { $addToSet: '$group.name' }
+        }
+      },
+      {
+        $sort: {
+          'module.name': 1,
+          'permission.action': 1
+        }
+      }
+    ]);
     
     const permissionsByModule = {};
-    permissions.forEach(permission => {
-      const module = permission.module_name;
+    permissions.forEach(result => {
+      const module = result.module.name;
       if (!permissionsByModule[module]) {
         permissionsByModule[module] = [];
       }
       permissionsByModule[module].push({
-        id: permission.id,
-        name: permission.name,
-        action: permission.action,
-        description: permission.description,
+        id: result.permission._id,
+        name: result.permission.name,
+        action: result.permission.action,
+        description: result.permission.description,
         grantedBy: {
-          role: permission.role_name,
-          group: permission.group_name
+          roles: result.roles,
+          groups: result.groups
         }
       });
     });
     
+    const allPermissions = permissions.map(result => ({
+      id: result.permission._id,
+      name: result.permission.name,
+      action: result.permission.action,
+      description: result.permission.description,
+      module_name: result.module.name,
+      roles: result.roles,
+      groups: result.groups
+    }));
+    
     res.json({
-      user,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email
+      },
       totalPermissions: permissions.length,
       permissionsByModule,
-      allPermissions: permissions
+      allPermissions
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch user effective permissions' });
   }
 });
 
-router.post('/users/:userId/check-permission', authenticateToken, checkPermission('Users', 'read'), (req, res) => {
+router.post('/users/:userId/check-permission', authenticateToken, checkPermission('Users', 'read'), async (req, res) => {
   try {
     const { userId } = req.params;
     const { module, action } = req.body;
@@ -253,35 +397,96 @@ router.post('/users/:userId/check-permission', authenticateToken, checkPermissio
       return res.status(400).json({ error: 'Module and action are required' });
     }
     
-    const user = db.prepare('SELECT id, username FROM users WHERE id = ?').get(userId);
+    const user = await User.findById(userId).select('id username');
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    const query = `
-      SELECT COUNT(*) as count, 
-             GROUP_CONCAT(DISTINCT g.name) as groups,
-             GROUP_CONCAT(DISTINCT r.name) as roles
-      FROM permissions p
-      JOIN modules m ON p.module_id = m.id
-      JOIN role_permissions rp ON p.id = rp.permission_id
-      JOIN roles r ON rp.role_id = r.id
-      JOIN group_roles gr ON r.id = gr.role_id
-      JOIN groups g ON gr.group_id = g.id
-      JOIN user_groups ug ON g.id = ug.group_id
-      WHERE ug.user_id = ? AND m.name = ? AND p.action = ?
-    `;
+    const result = await UserGroup.aggregate([
+      { $match: { user_id: user._id } },
+      {
+        $lookup: {
+          from: 'grouproles',
+          localField: 'group_id',
+          foreignField: 'group_id',
+          as: 'groupRoles'
+        }
+      },
+      { $unwind: '$groupRoles' },
+      {
+        $lookup: {
+          from: 'rolepermissions',
+          localField: 'groupRoles.role_id',
+          foreignField: 'role_id',
+          as: 'rolePermissions'
+        }
+      },
+      { $unwind: '$rolePermissions' },
+      {
+        $lookup: {
+          from: 'permissions',
+          localField: 'rolePermissions.permission_id',
+          foreignField: '_id',
+          as: 'permission'
+        }
+      },
+      { $unwind: '$permission' },
+      {
+        $lookup: {
+          from: 'modules',
+          localField: 'permission.module_id',
+          foreignField: '_id',
+          as: 'module'
+        }
+      },
+      { $unwind: '$module' },
+      {
+        $lookup: {
+          from: 'roles',
+          localField: 'groupRoles.role_id',
+          foreignField: '_id',
+          as: 'role'
+        }
+      },
+      { $unwind: '$role' },
+      {
+        $lookup: {
+          from: 'groups',
+          localField: 'group_id',
+          foreignField: '_id',
+          as: 'group'
+        }
+      },
+      { $unwind: '$group' },
+      {
+        $match: {
+          'module.name': module,
+          'permission.action': action
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          groups: { $addToSet: '$group.name' },
+          roles: { $addToSet: '$role.name' }
+        }
+      }
+    ]);
     
-    const result = db.prepare(query).get(userId, module, action);
+    const hasPermission = result.length > 0 && result[0].count > 0;
     
     res.json({
-      user: user,
+      user: {
+        id: user._id,
+        username: user.username
+      },
       module: module,
       action: action,
-      hasPermission: result.count > 0,
-      grantedThrough: result.count > 0 ? {
-        groups: result.groups ? result.groups.split(',') : [],
-        roles: result.roles ? result.roles.split(',') : []
+      hasPermission: hasPermission,
+      grantedThrough: hasPermission ? {
+        groups: result[0].groups || [],
+        roles: result[0].roles || []
       } : null
     });
   } catch (error) {
@@ -289,66 +494,68 @@ router.post('/users/:userId/check-permission', authenticateToken, checkPermissio
   }
 });
 
-router.get('/orphaned-entities', authenticateToken, checkPermission('Users', 'read'), (req, res) => {
+router.get('/orphaned-entities', authenticateToken, checkPermission('Users', 'read'), async (req, res) => {
   try {
-    const orphanedUsers = db.prepare(`
-      SELECT u.id, u.username, u.email
-      FROM users u
-      LEFT JOIN user_groups ug ON u.id = ug.user_id
-      WHERE ug.user_id IS NULL
-    `).all();
+    // Find users without groups
+    const allUsers = await User.find().select('id username email');
+    const usersWithGroups = await UserGroup.distinct('user_id');
+    const orphanedUsers = allUsers.filter(user => 
+      !usersWithGroups.some(ugUserId => ugUserId.equals(user._id))
+    );
     
-    const emptyGroups = db.prepare(`
-      SELECT g.id, g.name, g.description
-      FROM groups g
-      LEFT JOIN user_groups ug ON g.id = ug.group_id
-      WHERE ug.group_id IS NULL
-    `).all();
+    // Find groups without users
+    const allGroups = await Group.find().select('id name description');
+    const groupsWithUsers = await UserGroup.distinct('group_id');
+    const emptyGroups = allGroups.filter(group => 
+      !groupsWithUsers.some(ugGroupId => ugGroupId.equals(group._id))
+    );
     
-    const groupsWithoutRoles = db.prepare(`
-      SELECT g.id, g.name, g.description
-      FROM groups g
-      LEFT JOIN group_roles gr ON g.id = gr.group_id
-      WHERE gr.group_id IS NULL
-    `).all();
+    // Find groups without roles
+    const groupsWithRoles = await GroupRole.distinct('group_id');
+    const groupsWithoutRoles = allGroups.filter(group => 
+      !groupsWithRoles.some(grGroupId => grGroupId.equals(group._id))
+    );
     
-    const unassignedRoles = db.prepare(`
-      SELECT r.id, r.name, r.description
-      FROM roles r
-      LEFT JOIN group_roles gr ON r.id = gr.role_id
-      WHERE gr.role_id IS NULL
-    `).all();
+    // Find roles not assigned to groups
+    const allRoles = await Role.find().select('id name description');
+    const rolesWithGroups = await GroupRole.distinct('role_id');
+    const unassignedRoles = allRoles.filter(role => 
+      !rolesWithGroups.some(grRoleId => grRoleId.equals(role._id))
+    );
     
-    const rolesWithoutPermissions = db.prepare(`
-      SELECT r.id, r.name, r.description
-      FROM roles r
-      LEFT JOIN role_permissions rp ON r.id = rp.role_id
-      WHERE rp.role_id IS NULL
-    `).all();
+    // Find roles without permissions
+    const rolesWithPermissions = await RolePermission.distinct('role_id');
+    const rolesWithoutPermissions = allRoles.filter(role => 
+      !rolesWithPermissions.some(rpRoleId => rpRoleId.equals(role._id))
+    );
     
-    const unassignedPermissions = db.prepare(`
-      SELECT p.id, p.name, p.action, m.name as module_name
-      FROM permissions p
-      JOIN modules m ON p.module_id = m.id
-      LEFT JOIN role_permissions rp ON p.id = rp.permission_id
-      WHERE rp.permission_id IS NULL
-    `).all();
+    // Find permissions not assigned to roles
+    const allPermissions = await Permission.find().populate('module_id', 'name');
+    const permissionsWithRoles = await RolePermission.distinct('permission_id');
+    const unassignedPermissions = allPermissions.filter(permission => 
+      !permissionsWithRoles.some(rpPermissionId => rpPermissionId.equals(permission._id))
+    ).map(p => ({
+      id: p._id,
+      name: p.name,
+      action: p.action,
+      module_name: p.module_id.name
+    }));
     
-    const modulesWithoutPermissions = db.prepare(`
-      SELECT m.id, m.name, m.description
-      FROM modules m
-      LEFT JOIN permissions p ON m.id = p.module_id
-      WHERE p.module_id IS NULL
-    `).all();
+    // Find modules without permissions
+    const allModules = await Module.find().select('id name description');
+    const modulesWithPermissions = await Permission.distinct('module_id');
+    const modulesWithoutPermissions = allModules.filter(module => 
+      !modulesWithPermissions.some(pModuleId => pModuleId.equals(module._id))
+    );
     
     res.json({
-      orphanedUsers,
-      emptyGroups,
-      groupsWithoutRoles,
-      unassignedRoles,
-      rolesWithoutPermissions,
+      orphanedUsers: orphanedUsers.map(u => ({ id: u._id, username: u.username, email: u.email })),
+      emptyGroups: emptyGroups.map(g => ({ id: g._id, name: g.name, description: g.description })),
+      groupsWithoutRoles: groupsWithoutRoles.map(g => ({ id: g._id, name: g.name, description: g.description })),
+      unassignedRoles: unassignedRoles.map(r => ({ id: r._id, name: r.name, description: r.description })),
+      rolesWithoutPermissions: rolesWithoutPermissions.map(r => ({ id: r._id, name: r.name, description: r.description })),
       unassignedPermissions,
-      modulesWithoutPermissions,
+      modulesWithoutPermissions: modulesWithoutPermissions.map(m => ({ id: m._id, name: m.name, description: m.description })),
       summary: {
         orphanedUsersCount: orphanedUsers.length,
         emptyGroupsCount: emptyGroups.length,
@@ -364,7 +571,7 @@ router.get('/orphaned-entities', authenticateToken, checkPermission('Users', 're
   }
 });
 
-router.post('/groups/:groupId/users/bulk', authenticateToken, checkPermission('Groups', 'update'), (req, res) => {
+router.post('/groups/:groupId/users/bulk', authenticateToken, checkPermission('Groups', 'update'), async (req, res) => {
   try {
     const { groupId } = req.params;
     const { userIds } = req.body;
@@ -373,51 +580,59 @@ router.post('/groups/:groupId/users/bulk', authenticateToken, checkPermission('G
       return res.status(400).json({ error: 'User IDs array is required' });
     }
     
-    const group = db.prepare('SELECT id, name FROM groups WHERE id = ?').get(groupId);
+    const group = await Group.findById(groupId).select('id name');
     if (!group) {
       return res.status(404).json({ error: 'Group not found' });
     }
     
-    const validUsers = db.prepare(`
-      SELECT id, username FROM users WHERE id IN (${userIds.map(() => '?').join(',')})
-    `).all(...userIds);
+    const validUsers = await User.find({ _id: { $in: userIds } }).select('id username');
     
     if (validUsers.length !== userIds.length) {
       return res.status(400).json({ error: 'One or more invalid user IDs' });
     }
     
-    const insert = db.prepare('INSERT OR IGNORE INTO user_groups (user_id, group_id) VALUES (?, ?)');
     let assignedCount = 0;
     
-    userIds.forEach(userId => {
-      const result = insert.run(userId, groupId);
-      if (result.changes > 0) {
+    for (const userId of userIds) {
+      try {
+        const userGroup = new UserGroup({ user_id: userId, group_id: groupId });
+        await userGroup.save();
         assignedCount++;
+      } catch (error) {
+        // Skip if already exists (duplicate key error)
+        if (error.code !== 11000) {
+          throw error;
+        }
       }
-    });
+    }
     
     res.status(201).json({
       message: `${assignedCount} users assigned to group "${group.name}" successfully`,
-      group: group,
+      group: { id: group._id, name: group.name },
       assigned: assignedCount,
       total: userIds.length,
-      users: validUsers
+      users: validUsers.map(u => ({ id: u._id, username: u.username }))
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to bulk assign users to group' });
   }
 });
 
-router.get('/user-groups', authenticateToken, checkPermission('Users', 'read'), (req, res) => {
+router.get('/user-groups', authenticateToken, checkPermission('Users', 'read'), async (req, res) => {
   try {
-    const userGroups = db.prepare(`
-      SELECT ug.user_id, ug.group_id, g.name as group_name, u.username
-      FROM user_groups ug
-      JOIN groups g ON ug.group_id = g.id
-      JOIN users u ON ug.user_id = u.id
-      ORDER BY u.username, g.name
-    `).all();
-    res.json(userGroups);
+    const userGroups = await UserGroup.find()
+      .populate('group_id', 'name')
+      .populate('user_id', 'username')
+      .sort({ 'user_id.username': 1, 'group_id.name': 1 });
+    
+    const formattedUserGroups = userGroups.map(ug => ({
+      user_id: ug.user_id._id,
+      group_id: ug.group_id._id,
+      group_name: ug.group_id.name,
+      username: ug.user_id.username
+    }));
+    
+    res.json(formattedUserGroups);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch user-group relationships' });
   }

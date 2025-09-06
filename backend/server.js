@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const { initDatabase } = require('./config/database');
@@ -18,11 +19,11 @@ const PORT = process.env.PORT || 3001;
 // Initialize database on each request for serverless
 let dbInitialized = false;
 
-const initDatabaseMiddleware = (req, res, next) => {
+const initDatabaseMiddleware = async (req, res, next) => {
   if (!dbInitialized) {
     try {
       console.log('Initializing database...');
-      initDatabase();
+      await initDatabase();
       dbInitialized = true;
       console.log('✅ Database initialized successfully');
     } catch (error) {

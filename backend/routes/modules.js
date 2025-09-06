@@ -1,19 +1,19 @@
 const express = require('express');
-const { db } = require('../config/database');
+const { Module, Permission, Role, User, RolePermission, UserGroup, GroupRole } = require('../config/database');
 const { authenticateToken, checkPermission } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/modules', authenticateToken, checkPermission('Modules', 'read'), (req, res) => {
+router.get('/modules', authenticateToken, checkPermission('Modules', 'read'), async (req, res) => {
   try {
-    const modules = db.prepare('SELECT * FROM modules').all();
+    const modules = await Module.find();
     res.json(modules);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch modules' });
   }
 });
 
-router.post('/modules', authenticateToken, checkPermission('Modules', 'create'), (req, res) => {
+router.post('/modules', authenticateToken, checkPermission('Modules', 'create'), async (req, res) => {
   try {
     const { name, description } = req.body;
     
@@ -22,18 +22,15 @@ router.post('/modules', authenticateToken, checkPermission('Modules', 'create'),
       return res.status(400).json({ error: 'Module name is required' });
     }
     
-    const insert = db.prepare('INSERT INTO modules (name, description) VALUES (?, ?)');
-    const result = insert.run(name.trim(), description || null);
-    
-    const module = { 
-      id: result.lastInsertRowid, 
+    const module = new Module({ 
       name: name.trim(), 
-      description: description || null,
-      created_at: new Date().toISOString()
-    };
+      description: description || null
+    });
+    await module.save();
+    
     res.status(201).json(module);
   } catch (error) {
-    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    if (error.code === 11000) {
       res.status(400).json({ error: 'Module name already exists' });
     } else {
       res.status(500).json({ error: 'Failed to create module' });
@@ -41,7 +38,7 @@ router.post('/modules', authenticateToken, checkPermission('Modules', 'create'),
   }
 });
 
-router.put('/modules/:id', authenticateToken, checkPermission('Modules', 'update'), (req, res) => {
+router.put('/modules/:id', authenticateToken, checkPermission('Modules', 'update'), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description } = req.body;
@@ -50,18 +47,19 @@ router.put('/modules/:id', authenticateToken, checkPermission('Modules', 'update
       return res.status(400).json({ error: 'Module name is required' });
     }
     
-    const existingModule = db.prepare('SELECT id FROM modules WHERE id = ?').get(id);
-    if (!existingModule) {
+    const module = await Module.findByIdAndUpdate(
+      id,
+      { name: name.trim(), description: description || null },
+      { new: true, runValidators: true }
+    );
+    
+    if (!module) {
       return res.status(404).json({ error: 'Module not found' });
     }
     
-    db.prepare('UPDATE modules SET name = ?, description = ? WHERE id = ?')
-      .run(name.trim(), description || null, id);
-    
-    const module = db.prepare('SELECT * FROM modules WHERE id = ?').get(id);
     res.json(module);
   } catch (error) {
-    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+    if (error.code === 11000) {
       res.status(400).json({ error: 'Module name already exists' });
     } else {
       res.status(500).json({ error: 'Failed to update module' });
@@ -69,44 +67,40 @@ router.put('/modules/:id', authenticateToken, checkPermission('Modules', 'update
   }
 });
 
-router.delete('/modules/:id', authenticateToken, checkPermission('Modules', 'delete'), (req, res) => {
+router.delete('/modules/:id', authenticateToken, checkPermission('Modules', 'delete'), async (req, res) => {
   try {
     const { id } = req.params;
     
-    const existingModule = db.prepare('SELECT id FROM modules WHERE id = ?').get(id);
+    const existingModule = await Module.findById(id);
     if (!existingModule) {
       return res.status(404).json({ error: 'Module not found' });
     }
     
-    const permissionCount = db.prepare('SELECT COUNT(*) as count FROM permissions WHERE module_id = ?').get(id);
-    if (permissionCount.count > 0) {
+    const permissionCount = await Permission.countDocuments({ module_id: id });
+    if (permissionCount > 0) {
       return res.status(400).json({ 
         error: 'Cannot delete module with associated permissions. Delete permissions first.' 
       });
     }
     
-    db.prepare('DELETE FROM modules WHERE id = ?').run(id);
+    await Module.findByIdAndDelete(id);
     res.status(204).send();
   } catch (error) {
     res.status(500).json({ error: 'Failed to delete module' });
   }
 });
 
-router.get('/modules/:id/permissions', authenticateToken, checkPermission('Modules', 'read'), (req, res) => {
+router.get('/modules/:id/permissions', authenticateToken, checkPermission('Modules', 'read'), async (req, res) => {
   try {
     const { id } = req.params;
     
-    const module = db.prepare('SELECT * FROM modules WHERE id = ?').get(id);
+    const module = await Module.findById(id);
     if (!module) {
       return res.status(404).json({ error: 'Module not found' });
     }
     
-    const permissions = db.prepare(`
-      SELECT p.id, p.name, p.action, p.description, p.created_at
-      FROM permissions p
-      WHERE p.module_id = ?
-      ORDER BY p.action
-    `).all(id);
+    const permissions = await Permission.find({ module_id: id })
+      .sort({ action: 1 });
     
     res.json({
       module: module,
@@ -117,41 +111,73 @@ router.get('/modules/:id/permissions', authenticateToken, checkPermission('Modul
   }
 });
 
-router.get('/modules/:id/stats', authenticateToken, checkPermission('Modules', 'read'), (req, res) => {
+router.get('/modules/:id/stats', authenticateToken, checkPermission('Modules', 'read'), async (req, res) => {
   try {
     const { id } = req.params;
     
-    const module = db.prepare('SELECT * FROM modules WHERE id = ?').get(id);
+    const module = await Module.findById(id);
     if (!module) {
       return res.status(404).json({ error: 'Module not found' });
     }
     
-    const permissionCount = db.prepare('SELECT COUNT(*) as count FROM permissions WHERE module_id = ?').get(id);
+    const permissionCount = await Permission.countDocuments({ module_id: id });
     
-    const roleCount = db.prepare(`
-      SELECT COUNT(DISTINCT r.id) as count
-      FROM roles r
-      JOIN role_permissions rp ON r.id = rp.role_id
-      JOIN permissions p ON rp.permission_id = p.id
-      WHERE p.module_id = ?
-    `).get(id);
+    // Count distinct roles that have permissions from this module
+    const rolePermissions = await RolePermission.find()
+      .populate({
+        path: 'permission_id',
+        match: { module_id: id }
+      });
     
-    const userCount = db.prepare(`
-      SELECT COUNT(DISTINCT u.id) as count
-      FROM users u
-      JOIN user_groups ug ON u.id = ug.user_id
-      JOIN group_roles gr ON ug.group_id = gr.group_id
-      JOIN role_permissions rp ON gr.role_id = rp.role_id
-      JOIN permissions p ON rp.permission_id = p.id
-      WHERE p.module_id = ?
-    `).get(id);
+    const uniqueRoleIds = new Set();
+    rolePermissions.forEach(rp => {
+      if (rp.permission_id) {
+        uniqueRoleIds.add(rp.role_id.toString());
+      }
+    });
+    const roleCount = uniqueRoleIds.size;
+    
+    // Count distinct users that have access to this module through group-role-permission chain
+    const userGroupRolePermissions = await UserGroup.aggregate([
+      {
+        $lookup: {
+          from: 'grouproles',
+          localField: 'group_id',
+          foreignField: 'group_id',
+          as: 'groupRoles'
+        }
+      },
+      { $unwind: '$groupRoles' },
+      {
+        $lookup: {
+          from: 'rolepermissions',
+          localField: 'groupRoles.role_id',
+          foreignField: 'role_id',
+          as: 'rolePermissions'
+        }
+      },
+      { $unwind: '$rolePermissions' },
+      {
+        $lookup: {
+          from: 'permissions',
+          localField: 'rolePermissions.permission_id',
+          foreignField: '_id',
+          as: 'permission'
+        }
+      },
+      { $unwind: '$permission' },
+      { $match: { 'permission.module_id': module._id } },
+      { $group: { _id: '$user_id' } }
+    ]);
+    
+    const userCount = userGroupRolePermissions.length;
     
     res.json({
       module: module,
       stats: {
-        permissions: permissionCount.count,
-        roles: roleCount.count,
-        users: userCount.count
+        permissions: permissionCount,
+        roles: roleCount,
+        users: userCount
       }
     });
   } catch (error) {

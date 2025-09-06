@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { db } = require('../config/database');
+const { Module, Permission, UserGroup, GroupRole, RolePermission } = require('../config/database');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -27,21 +27,53 @@ const checkPermission = (module, action) => {
     try {
       const userId = req.user.id;
       
-      const query = `
-        SELECT COUNT(*) as count
-        FROM permissions p
-        JOIN modules m ON p.module_id = m.id
-        JOIN role_permissions rp ON p.id = rp.permission_id
-        JOIN roles r ON rp.role_id = r.id
-        JOIN group_roles gr ON r.id = gr.role_id
-        JOIN groups g ON gr.group_id = g.id
-        JOIN user_groups ug ON g.id = ug.group_id
-        WHERE ug.user_id = ? AND m.name = ? AND p.action = ?
-      `;
+      // Get user groups
+      const userGroups = await UserGroup.find({ user_id: userId });
+      const groupIds = userGroups.map(ug => ug.group_id);
       
-      const result = db.prepare(query).get(userId, module, action);
+      if (groupIds.length === 0) {
+        return res.status(403).json({ 
+          error: `Permission denied: ${action} on ${module}` 
+        });
+      }
       
-      if (result.count > 0) {
+      // Get group roles
+      const groupRoles = await GroupRole.find({ group_id: { $in: groupIds } });
+      const roleIds = groupRoles.map(gr => gr.role_id);
+      
+      if (roleIds.length === 0) {
+        return res.status(403).json({ 
+          error: `Permission denied: ${action} on ${module}` 
+        });
+      }
+      
+      // Find the module
+      const moduleDoc = await Module.findOne({ name: module });
+      if (!moduleDoc) {
+        return res.status(403).json({ 
+          error: `Permission denied: ${action} on ${module}` 
+        });
+      }
+      
+      // Find the permission
+      const permission = await Permission.findOne({ 
+        module_id: moduleDoc._id, 
+        action: action 
+      });
+      
+      if (!permission) {
+        return res.status(403).json({ 
+          error: `Permission denied: ${action} on ${module}` 
+        });
+      }
+      
+      // Check if any role has this permission
+      const rolePermission = await RolePermission.findOne({
+        role_id: { $in: roleIds },
+        permission_id: permission._id
+      });
+      
+      if (rolePermission) {
         next();
       } else {
         return res.status(403).json({ 
@@ -49,6 +81,7 @@ const checkPermission = (module, action) => {
         });
       }
     } catch (error) {
+      console.error('Permission check error:', error);
       return res.status(500).json({ 
         error: 'Permission check failed' 
       });

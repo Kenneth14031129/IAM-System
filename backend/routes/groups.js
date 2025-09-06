@@ -1,58 +1,70 @@
 const express = require('express');
-const { db } = require('../config/database');
+const { Group, UserGroup, GroupRole } = require('../config/database');
 const { authenticateToken, checkPermission } = require('../middleware/auth');
 
 const router = express.Router();
 
-router.get('/groups', authenticateToken, checkPermission('Groups', 'read'), (req, res) => {
+router.get('/groups', authenticateToken, checkPermission('Groups', 'read'), async (req, res) => {
   try {
-    const groups = db.prepare('SELECT * FROM groups').all();
+    const groups = await Group.find();
     res.json(groups);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch groups' });
   }
 });
 
-router.post('/groups', authenticateToken, checkPermission('Groups', 'create'), (req, res) => {
+router.post('/groups', authenticateToken, checkPermission('Groups', 'create'), async (req, res) => {
   try {
     const { name, description } = req.body;
-    const insert = db.prepare('INSERT INTO groups (name, description) VALUES (?, ?)');
-    const result = insert.run(name, description || null);
-    
-    const group = { id: result.lastInsertRowid, name, description };
-    res.status(201).json(group);
+    const group = new Group({ name, description });
+    const savedGroup = await group.save();
+    res.status(201).json(savedGroup);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to create group' });
+    if (error.code === 11000) {
+      res.status(400).json({ error: 'Group name already exists' });
+    } else {
+      res.status(500).json({ error: 'Failed to create group' });
+    }
   }
 });
 
-router.put('/groups/:id', authenticateToken, checkPermission('Groups', 'update'), (req, res) => {
+router.put('/groups/:id', authenticateToken, checkPermission('Groups', 'update'), async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description } = req.body;
     
-    db.prepare('UPDATE groups SET name = ?, description = ? WHERE id = ?').run(name, description, id);
-    
-    const group = db.prepare('SELECT * FROM groups WHERE id = ?').get(id);
-    res.json(group);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to update group' });
-  }
-});
-
-router.delete('/groups/:id', authenticateToken, checkPermission('Groups', 'delete'), (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    const transaction = db.transaction(() => {
-      db.prepare('DELETE FROM user_groups WHERE group_id = ?').run(id);
-      
-      db.prepare('DELETE FROM group_roles WHERE group_id = ?').run(id);
-      
-      db.prepare('DELETE FROM groups WHERE id = ?').run(id);
+    const group = await Group.findByIdAndUpdate(id, { name, description }, {
+      new: true,
+      runValidators: true
     });
     
-    transaction();
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
+    
+    res.json(group);
+  } catch (error) {
+    if (error.code === 11000) {
+      res.status(400).json({ error: 'Group name already exists' });
+    } else {
+      res.status(500).json({ error: 'Failed to update group' });
+    }
+  }
+});
+
+router.delete('/groups/:id', authenticateToken, checkPermission('Groups', 'delete'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Delete related records first
+    await UserGroup.deleteMany({ group_id: id });
+    await GroupRole.deleteMany({ group_id: id });
+    
+    const group = await Group.findByIdAndDelete(id);
+    
+    if (!group) {
+      return res.status(404).json({ error: 'Group not found' });
+    }
     
     res.status(204).send();
   } catch (error) {
@@ -61,47 +73,53 @@ router.delete('/groups/:id', authenticateToken, checkPermission('Groups', 'delet
   }
 });
 
-router.post('/groups/:groupId/users', authenticateToken, checkPermission('Groups', 'update'), (req, res) => {
+router.post('/groups/:groupId/users', authenticateToken, checkPermission('Groups', 'update'), async (req, res) => {
   try {
     const { groupId } = req.params;
     const { userId } = req.body;
     
-    const insert = db.prepare('INSERT INTO user_groups (user_id, group_id) VALUES (?, ?)');
-    insert.run(userId, groupId);
+    const existingRelation = await UserGroup.findOne({ user_id: userId, group_id: groupId });
+    if (existingRelation) {
+      return res.status(400).json({ error: 'User already assigned to this group' });
+    }
+    
+    const userGroup = new UserGroup({ user_id: userId, group_id: groupId });
+    await userGroup.save();
     
     res.status(201).json({ message: 'User assigned to group successfully' });
   } catch (error) {
-    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-      res.status(400).json({ error: 'User already assigned to this group' });
-    } else {
-      res.status(500).json({ error: 'Failed to assign user to group' });
-    }
+    res.status(500).json({ error: 'Failed to assign user to group' });
   }
 });
 
-router.post('/groups/:groupId/roles', authenticateToken, checkPermission('Groups', 'update'), (req, res) => {
+router.post('/groups/:groupId/roles', authenticateToken, checkPermission('Groups', 'update'), async (req, res) => {
   try {
     const { groupId } = req.params;
     const { roleId } = req.body;
     
-    const insert = db.prepare('INSERT INTO group_roles (group_id, role_id) VALUES (?, ?)');
-    insert.run(groupId, roleId);
+    const existingRelation = await GroupRole.findOne({ group_id: groupId, role_id: roleId });
+    if (existingRelation) {
+      return res.status(400).json({ error: 'Role already assigned to this group' });
+    }
+    
+    const groupRole = new GroupRole({ group_id: groupId, role_id: roleId });
+    await groupRole.save();
     
     res.status(201).json({ message: 'Role assigned to group successfully' });
   } catch (error) {
-    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
-      res.status(400).json({ error: 'Role already assigned to this group' });
-    } else {
-      res.status(500).json({ error: 'Failed to assign role to group' });
-    }
+    res.status(500).json({ error: 'Failed to assign role to group' });
   }
 });
 
-router.delete('/groups/:groupId/roles/:roleId', authenticateToken, checkPermission('Groups', 'update'), (req, res) => {
+router.delete('/groups/:groupId/roles/:roleId', authenticateToken, checkPermission('Groups', 'update'), async (req, res) => {
   try {
     const { groupId, roleId } = req.params;
     
-    db.prepare('DELETE FROM group_roles WHERE group_id = ? AND role_id = ?').run(groupId, roleId);
+    const result = await GroupRole.findOneAndDelete({ group_id: groupId, role_id: roleId });
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Role is not assigned to this group' });
+    }
     
     res.status(200).json({ message: 'Role removed from group successfully' });
   } catch (error) {
@@ -109,16 +127,16 @@ router.delete('/groups/:groupId/roles/:roleId', authenticateToken, checkPermissi
   }
 });
 
-router.delete('/groups/:groupId/users/:userId', authenticateToken, checkPermission('Groups', 'update'), (req, res) => {
+router.delete('/groups/:groupId/users/:userId', authenticateToken, checkPermission('Groups', 'update'), async (req, res) => {
   try {
     const { groupId, userId } = req.params;
     
-    const relationship = db.prepare('SELECT id FROM user_groups WHERE user_id = ? AND group_id = ?').get(userId, groupId);
-    if (!relationship) {
+    const result = await UserGroup.findOneAndDelete({ user_id: userId, group_id: groupId });
+    
+    if (!result) {
       return res.status(404).json({ error: 'User is not assigned to this group' });
     }
     
-    db.prepare('DELETE FROM user_groups WHERE user_id = ? AND group_id = ?').run(userId, groupId);
     res.status(200).json({ message: 'User removed from group successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to remove user from group' });

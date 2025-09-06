@@ -129,7 +129,7 @@ const authSlice = createSlice({
 
 // Generic CRUD Async Thunks
 const createCrudThunks = (entityName) => {
-  const endpoint = `/admin?entity=${entityName}`;
+  const endpoint = `/${entityName}`;
   
   return {
     fetchAll: createAsyncThunk(
