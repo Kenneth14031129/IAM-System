@@ -48,7 +48,7 @@ const Roles = () => {
 
   const fetchRoleGroups = async () => {
     try {
-      const response = await fetch('/api/admin?entity=role-groups', {
+      const response = await fetch('/api/role-groups', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
